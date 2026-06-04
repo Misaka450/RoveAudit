@@ -28,27 +28,27 @@ export class Report {
   @Column({ type: 'text', nullable: true, comment: '清单描述' })
   description: string;
 
-  @Column({ name: 'sql_content', type: 'mediumtext', comment: '查询 SQL 语句（用于查询 Doris 业务数据）' })
+  @Column({ name: 'sql_content', type: 'text', comment: '查询 SQL 语句（用于查询 Doris 业务数据）' })
   sqlContent: string;
 
   @Column({ name: 'query_params', type: 'text', nullable: true, comment: '查询参数配置（JSON格式，如：[{name:"date",type:"date"}]）' })
   queryParams: string;
 
-  @Column({ name: 'enable_download', type: 'tinyint', default: 1, comment: '是否允许下载：1-允许 0-禁止' })
+  @Column({ name: 'enable_download', type: 'smallint', default: 1, comment: '是否允许下载：1-允许 0-禁止' })
   enableDownload: number;
 
-  @Column({ name: 'enable_chart', type: 'tinyint', default: 0, comment: '是否支持图表分析：1-支持 0-不支持' })
+  @Column({ name: 'enable_chart', type: 'smallint', default: 0, comment: '是否支持图表分析：1-支持 0-不支持' })
   enableChart: number;
 
-  @Column({ type: 'tinyint', default: 1, comment: '状态：1-启用 0-禁用' })
+  @Column({ type: 'smallint', default: 1, comment: '状态：1-启用 0-禁用' })
   status: number;
 
   @Column({ name: 'sort_order', type: 'int', default: 0, comment: '排序号（越小越靠前）' })
   sortOrder: number;
 
-  @CreateDateColumn({ name: 'create_time', comment: '创建时间' })
+  @CreateDateColumn({ name: 'create_time', type: 'timestamp', comment: '创建时间' })
   createTime: Date;
 
-  @UpdateDateColumn({ name: 'update_time', comment: '更新时间' })
+  @UpdateDateColumn({ name: 'update_time', type: 'timestamp', comment: '更新时间' })
   updateTime: Date;
 }

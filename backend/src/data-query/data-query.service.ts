@@ -52,9 +52,9 @@ export class DataQueryService {
     // 4. 获取总条数
     const total = await this.dorisService.count(sql);
 
-    // 5. 分页查询（在 SQL 末尾追加 LIMIT）
+    // 5. 分页查询（PG 语法：LIMIT count OFFSET offset）
     const offset = (page - 1) * pageSize;
-    const paginatedSql = `${sql} LIMIT ${offset}, ${pageSize}`;
+    const paginatedSql = `${sql} LIMIT ${pageSize} OFFSET ${offset}`;
     const data = await this.dorisService.query(paginatedSql);
 
     return {

@@ -29,12 +29,12 @@ import { WarningModule } from './warning/warning.module';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        type: 'mysql',
-        host: config.get('MYSQL_HOST', 'localhost'),
-        port: config.get('MYSQL_PORT', 3306),
-        username: config.get('MYSQL_USER', 'root'),
-        password: config.get('MYSQL_PASSWORD', '123456'),
-        database: config.get('MYSQL_DATABASE', 'data_portal'),
+        type: 'postgres',
+        host: config.get('PG_HOST', 'localhost'),
+        port: config.get('PG_PORT', 5432),
+        username: config.get('PG_USER', 'postgres'),
+        password: config.get('PG_PASSWORD', '123456'),
+        database: config.get('PG_DATABASE', 'data_portal'),
         entities: [__dirname + '/**/entities/*.entity{.ts,.js}'], // 自动扫描实体
         synchronize: false, // 生产环境关闭自动同步
         logging: false,
