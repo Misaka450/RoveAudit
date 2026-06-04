@@ -24,21 +24,20 @@ import { WarningModule } from './warning/warning.module';
       envFilePath: '.env',
     }),
 
-    // --- MySQL 系统数据库连接 ---
+    // --- PostgreSQL 系统数据库连接 ---
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        type: 'mysql',
-        host: config.get('MYSQL_HOST', 'localhost'),
-        port: config.get('MYSQL_PORT', 3306),
-        username: config.get('MYSQL_USER', 'root'),
-        password: config.get('MYSQL_PASSWORD', '123456'),
-        database: config.get('MYSQL_DATABASE', 'data_portal'),
+        type: 'postgres',
+        host: config.get('POSTGRES_HOST', 'localhost'),
+        port: config.get('POSTGRES_PORT', 5432),
+        username: config.get('POSTGRES_USER', 'postgres'),
+        password: config.get('POSTGRES_PASSWORD', 'postgres'),
+        database: config.get('POSTGRES_DATABASE', 'data_portal'),
         entities: [__dirname + '/**/entities/*.entity{.ts,.js}'], // 自动扫描实体
         synchronize: false, // 生产环境关闭自动同步
         logging: false,
-        timezone: '+08:00',
       }),
     }),
 
