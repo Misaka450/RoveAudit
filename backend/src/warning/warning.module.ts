@@ -5,6 +5,7 @@ import { WarningResult } from './entities/warning-result.entity';
 import { WarningService } from './warning.service';
 import { WarningController } from './warning.controller';
 import { DataQueryModule } from '../data-query/data-query.module';
+import { NotificationService } from '../common/notification.service';
 
 /**
  * 异常规则模块 - 异常规则 CRUD + 定时检测
@@ -12,7 +13,7 @@ import { DataQueryModule } from '../data-query/data-query.module';
 @Module({
   imports: [TypeOrmModule.forFeature([WarningRule, WarningResult]), DataQueryModule],
   controllers: [WarningController],
-  providers: [WarningService],
+  providers: [WarningService, NotificationService],
   exports: [WarningService],
 })
 export class WarningModule {}
