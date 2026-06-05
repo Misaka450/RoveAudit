@@ -1,6 +1,6 @@
 import request from '@/utils/request';
 import { message } from 'antd';
-import type { LoginResponse, PageResult, ReportConfig } from '@/types';
+import type { LoginResponse, PageResult, ReportConfig, User, Role, MenuItem, ReportColumnConfig, ReportChartConfig } from '@/types';
 
 /**
  * 认证相关 API
@@ -16,12 +16,12 @@ export const authApi = {
  */
 export const userApi = {
   /** 获取用户列表 */
-  list: (keyword?: string): Promise<any[]> =>
+  list: (keyword?: string): Promise<User[]> =>
     request.get('/users', { params: { keyword } }),
   /** 创建用户 */
-  create: (data: any) => request.post('/users', data),
+  create: (data: Partial<User>) => request.post('/users', data),
   /** 更新用户 */
-  update: (id: number, data: any) => request.put(`/users/${id}`, data),
+  update: (id: number, data: Partial<User>) => request.put(`/users/${id}`, data),
   /** 重置密码 */
   resetPassword: (id: number, password: string) =>
     request.put(`/users/${id}/reset-password`, { password }),
@@ -38,7 +38,7 @@ export const userApi = {
  */
 export const roleApi = {
   /** 获取角色列表 */
-  list: (): Promise<any[]> => request.get('/roles'),
+  list: (): Promise<Role[]> => request.get('/roles'),
   /** 创建角色 */
   create: (data: any) => request.post('/roles', data),
   /** 更新角色 */
@@ -54,7 +54,7 @@ export const menuApi = {
   /** 获取菜单树 */
   tree: (): Promise<any[]> => request.get('/menus/tree'),
   /** 获取菜单列表 */
-  list: (): Promise<any[]> => request.get('/menus'),
+  list: (): Promise<MenuItem[]> => request.get('/menus'),
   /** 创建菜单 */
   create: (data: any) => request.post('/menus', data),
   /** 更新菜单 */
@@ -90,10 +90,10 @@ export const reportApi = {
  */
 export const reportColumnApi = {
   /** 获取字段配置 */
-  get: (reportCode: string): Promise<any[]> =>
+  get: (reportCode: string): Promise<ReportColumnConfig[]> =>
     request.get(`/report-columns/${reportCode}`),
   /** 批量保存字段配置 */
-  save: (reportCode: string, columns: any[]) =>
+  save: (reportCode: string, columns: ReportColumnConfig[]) =>
     request.put(`/report-columns/${reportCode}`, columns),
 };
 
@@ -102,9 +102,9 @@ export const reportColumnApi = {
  */
 export const reportChartApi = {
   /** 获取所有图表配置 */
-  listAll: (): Promise<any[]> => request.get('/report-charts'),
+  listAll: (): Promise<ReportChartConfig[]> => request.get('/report-charts'),
   /** 获取清单的图表配置 */
-  list: (reportCode: string): Promise<any[]> =>
+  list: (reportCode: string): Promise<ReportChartConfig[]> =>
     request.get(`/report-charts/${reportCode}`),
   /** 创建图表配置 */
   create: (data: any) => request.post('/report-charts', data),
@@ -208,6 +208,9 @@ export const downloadLogApi = {
   /** 获取下载日志列表 */
   list: (keyword?: string): Promise<any[]> =>
     request.get('/download/logs', { params: { keyword } }),
+  /** 获取下载统计（今日/本月下载量、热门排行） */
+  stats: (): Promise<{ todayCount: number; monthCount: number; topReports: { reportName: string; downloadCount: number }[] }> =>
+    request.get('/download/stats'),
   /** 删除下载日志 */
   remove: (id: number) => request.delete(`/download/logs/${id}`),
 };

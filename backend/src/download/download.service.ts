@@ -1,9 +1,10 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like } from 'typeorm';
+import { Repository, Like, Between } from 'typeorm';
 import * as ExcelJS from 'exceljs';
 import { DataQueryService } from '../data-query/data-query.service';
 import { ReportService } from '../report/report.service';
+import { ReportColumnService } from '../report/report-column.service';
 import { Report } from '../report/entities/report.entity';
 import { DownloadLog } from './entities/download-log.entity';
 
@@ -19,6 +20,7 @@ export class DownloadService {
   constructor(
     private dataQueryService: DataQueryService,
     private reportService: ReportService,
+    private reportColumnService: ReportColumnService,
     @InjectRepository(DownloadLog)
     private downloadLogRepository: Repository<DownloadLog>,
   ) {}
@@ -46,13 +48,21 @@ export class DownloadService {
       throw new BadRequestException('没有可下载的数据');
     }
 
+    // 获取字段配置，如果有配置则使用中文列名
+    const columnConfigs = await this.reportColumnService.findByReportCode(reportCode);
+    const columnMap = new Map(columnConfigs.map((c) => [c.columnName, c.columnLabel]));
+
     // 创建 Excel 工作簿
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet(report.reportName);
 
-    // 从第一页数据提取表头
+    // 从第一页数据提取表头，优先使用字段配置的中文名
     const columns = Object.keys(firstPage.list[0]);
-    sheet.columns = columns.map((col) => ({ header: col, key: col, width: 20 }));
+    sheet.columns = columns.map((col) => ({
+      header: columnMap.get(col) || col,
+      key: col,
+      width: 20,
+    }));
 
     // 设置表头样式
     const headerRow = sheet.getRow(1);
@@ -106,13 +116,20 @@ export class DownloadService {
       throw new BadRequestException('没有可下载的数据');
     }
 
+    // 获取字段配置，如果有配置则使用中文列名
+    const columnConfigs = await this.reportColumnService.findByReportCode(reportCode);
+    const columnMap = new Map(columnConfigs.map((c) => [c.columnName, c.columnLabel]));
+
     const columns = Object.keys(firstPage.list[0]);
+
+    // 使用中文列名作为 CSV 表头
+    const headers = columns.map((col) => columnMap.get(col) || col);
 
     // 构建 CSV 内容（按行追加，避免一次性构建大字符串）
     const csvParts: string[] = [];
 
     // BOM + 表头
-    csvParts.push('\uFEFF' + columns.join(','));
+    csvParts.push('\uFEFF' + headers.join(','));
 
     // CSV 行转义
     const toCsvRow = (row: any) =>
@@ -145,6 +162,37 @@ export class DownloadService {
     await this.saveLog(userId, username, report, fileName, 'csv', total);
 
     return { buffer, fileName };
+  }
+
+  /**
+   * 获取下载统计（今日下载量、本月下载量、热门清单排行）
+   */
+  async getStats() {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // 今日下载量
+    const todayCount = await this.downloadLogRepository.count({
+      where: { downloadTime: Between(todayStart, now) },
+    });
+
+    // 本月下载量
+    const monthCount = await this.downloadLogRepository.count({
+      where: { downloadTime: Between(monthStart, now) },
+    });
+
+    // 热门清单排行（按下载次数分组统计）
+    const topReports = await this.downloadLogRepository
+      .createQueryBuilder('log')
+      .select('log.report_name', 'reportName')
+      .addSelect('COUNT(*)', 'downloadCount')
+      .groupBy('log.report_name')
+      .orderBy('downloadCount', 'DESC')
+      .limit(5)
+      .getRawMany();
+
+    return { todayCount, monthCount, topReports };
   }
 
   /** 保存下载日志 */

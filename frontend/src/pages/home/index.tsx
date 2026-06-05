@@ -2,34 +2,41 @@ import { useEffect, useState } from 'react';
 import { Row, Col, Card, Statistic, List, Typography, Tag } from 'antd';
 import {
   FileTextOutlined,
-  SyncOutlined,
   DownloadOutlined,
-  TeamOutlined,
-  StarOutlined,
-  ClockCircleOutlined,
   FireOutlined,
+  ClockCircleOutlined,
+  StarOutlined,
 } from '@ant-design/icons';
-import { reportApi } from '@/api';
+import { reportApi, downloadLogApi } from '@/api';
 import type { ReportConfig } from '@/types';
 
 const { Title, Text } = Typography;
 
 /**
  * 首页 - 数据概览 + 快捷入口
- * 最近访问从 localStorage 读取（在 ReportListPage 中记录）
+ * 统计数据和最近访问均从后端/本地存储获取
  */
 export default function HomePage() {
   const [reports, setReports] = useState<ReportConfig[]>([]);
   const [recentVisits, setRecentVisits] = useState<string[]>([]);
+  const [stats, setStats] = useState({ todayCount: 0, monthCount: 0, totalDownloads: 0 });
 
   useEffect(() => {
     // 加载所有清单
     reportApi.list().then(setReports).catch(() => {});
 
+    // 加载下载统计
+    downloadLogApi.stats().then((data) => {
+      setStats({
+        todayCount: data.todayCount,
+        monthCount: data.monthCount,
+        totalDownloads: data.monthCount, // 用月下载量近似展示
+      });
+    }).catch(() => {});
+
     // 从 localStorage 读取最近访问记录
     try {
       const visits = JSON.parse(localStorage.getItem('recentVisits') || '[]') as string[];
-      // 将编码映射为名称
       setRecentVisits(visits);
     } catch {
       setRecentVisits([]);
@@ -40,13 +47,6 @@ export default function HomePage() {
   const getReportName = (code: string) => {
     const r = reports.find((r) => r.reportCode === code);
     return r ? r.reportName : code;
-  };
-
-  const stats = {
-    reportCount: reports.length,
-    todayUpdate: Math.floor(Math.random() * 5) + 1, // 模拟
-    monthDownload: 128, // 从后端获取（待完善）
-    onlineUsers: 12, // 从后端获取（待完善）
   };
 
   // 最近访问的清单名称
@@ -61,45 +61,35 @@ export default function HomePage() {
     <div>
       <Title level={4} style={{ marginBottom: 24 }}>数据概览</Title>
 
-      {/* 统计卡片 */}
+      {/* 统计卡片 - 使用真实数据 */}
       <Row gutter={[16, 16]}>
-        <Col xs={24} sm={12} lg={6}>
+        <Col xs={24} sm={12} lg={8}>
           <Card>
             <Statistic
               title="可访问清单数"
-              value={stats.reportCount}
+              value={reports.length}
               prefix={<FileTextOutlined />}
               valueStyle={{ color: '#1677ff' }}
             />
           </Card>
         </Col>
-        <Col xs={24} sm={12} lg={6}>
+        <Col xs={24} sm={12} lg={8}>
           <Card>
             <Statistic
-              title="今日更新清单"
-              value={stats.todayUpdate}
-              prefix={<SyncOutlined />}
+              title="今日下载次数"
+              value={stats.todayCount}
+              prefix={<DownloadOutlined />}
               valueStyle={{ color: '#52c41a' }}
             />
           </Card>
         </Col>
-        <Col xs={24} sm={12} lg={6}>
+        <Col xs={24} sm={12} lg={8}>
           <Card>
             <Statistic
               title="本月下载次数"
-              value={stats.monthDownload}
+              value={stats.monthCount}
               prefix={<DownloadOutlined />}
               valueStyle={{ color: '#faad14' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card>
-            <Statistic
-              title="在线用户数"
-              value={stats.onlineUsers}
-              prefix={<TeamOutlined />}
-              valueStyle={{ color: '#ff4d4f' }}
             />
           </Card>
         </Col>
@@ -107,7 +97,7 @@ export default function HomePage() {
 
       {/* 快捷入口 */}
       <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
-        <Col xs={24} md={8}>
+        <Col xs={24} md={12}>
           <Card
             title={<><ClockCircleOutlined /> 最近访问</>}
             variant="borderless"
@@ -123,23 +113,7 @@ export default function HomePage() {
             />
           </Card>
         </Col>
-        <Col xs={24} md={8}>
-          <Card
-            title={<><StarOutlined /> 收藏清单</>}
-            variant="borderless"
-          >
-            <List
-              dataSource={reports.slice(0, 5).map((r) => r.reportName)}
-              renderItem={(item) => (
-                <List.Item>
-                  <Text>{item}</Text>
-                </List.Item>
-              )}
-              locale={{ emptyText: '暂无收藏' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} md={8}>
+        <Col xs={24} md={12}>
           <Card
             title={<><FireOutlined style={{ color: '#ff4d4f' }} /> 热门清单</>}
             variant="borderless"

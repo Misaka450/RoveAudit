@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like } from 'typeorm';
+import { Repository, Like, FindOptionsWhere } from 'typeorm';
 import { Report } from './entities/report.entity';
 import { CacheService } from '../common/cache.service';
 
@@ -25,7 +25,7 @@ export class ReportService {
     const cached = this.cacheService.get(cacheKey);
     if (cached) return cached;
 
-    const where: any = { status: 1 };
+    const where: FindOptionsWhere<Report> = { status: 1 };
     if (category) {
       where.category = category;
     }
@@ -43,7 +43,7 @@ export class ReportService {
    * 查询所有清单（包括禁用，用于管理页面）
    */
   async findAllAdmin(keyword?: string) {
-    const where: any = {};
+    const where: FindOptionsWhere<Report> = {};
     if (keyword) {
       return this.reportRepository.find({
         where: [

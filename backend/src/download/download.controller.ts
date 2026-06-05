@@ -102,6 +102,13 @@ export class DownloadController {
     return this.downloadService.findAll(keyword);
   }
 
+  /** 获取下载统计 */
+  @Get('stats')
+  @ApiOperation({ summary: '获取下载统计（今日/本月下载量、热门排行）' })
+  async getStats() {
+    return this.downloadService.getStats();
+  }
+
   /** 删除下载日志 */
   @Delete('logs/:id')
   @ApiOperation({ summary: '删除下载日志' })

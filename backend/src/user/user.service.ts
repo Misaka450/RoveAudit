@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, Like } from 'typeorm';
+import { Repository, In, Like, FindOptionsWhere } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { User } from './entities/user.entity';
 import { Role } from '../role/entities/role.entity';
@@ -23,7 +23,6 @@ export class UserService {
    * 查询用户列表（支持按账号、姓名模糊搜索）
    */
   async findAll(keyword?: string) {
-    const where: any = {};
     if (keyword) {
       // 模糊搜索：账号或姓名包含关键词
       return this.userRepository.find({
@@ -108,7 +107,7 @@ export class UserService {
    * 批量导入用户
    */
    async batchImport(data: any[]) {
-     const results: any = { success: 0, failed: 0, errors: [] };
+     const results: { success: number; failed: number; errors: string[] } = { success: 0, failed: 0, errors: [] };
      for (const row of data) {
        try {
          if (!row.username || !row.realName || !row.password) {
