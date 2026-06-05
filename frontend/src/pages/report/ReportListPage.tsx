@@ -145,8 +145,7 @@ export default function ReportListPage() {
     if (!report || !reportCode) return;
     if (!report.enableDownload) { message.warning('该清单不允许下载'); return; }
     const extraParams: any = { ...activeFilters };
-    if (dateRange) { extraParams.startDate = dateRange[0]; extraParams.endDate = dateRange[1]; }
-    // 加入自动生成的参数
+    if (dateRange) { extraParams.startDate = dateRange[0]!; extraParams.endDate = dateRange[1]!; }
     for (const qp of queryParamsConfig) {
       if (activeFilters[qp.key]) {
         extraParams[qp.key] = activeFilters[qp.key];
