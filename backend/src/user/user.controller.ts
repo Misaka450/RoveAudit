@@ -46,6 +46,21 @@ export class UserController {
     return this.userService.resetPassword(id, password);
   }
 
+  @Post('batch-import')
+  @ApiOperation({ summary: '批量导入用户（Excel）' })
+  batchImport(@Body() data: any[]) {
+    return this.userService.batchImport(data);
+  }
+
+  @Get('template')
+  @ApiOperation({ summary: '获取用户导入模板（返回示例数据）' })
+  getTemplate() {
+    return [
+      { username: 'zhangsan', realName: '张三', department: '技术部', phone: '13800001001', roleNames: '普通用户', password: '123456' },
+      { username: 'lisi', realName: '李四', department: '市场部', phone: '13800001002', roleNames: '普通用户', password: '123456' },
+    ];
+  }
+
   @Delete(':id')
   @ApiOperation({ summary: '删除用户（软删除）' })
   remove(@Param('id') id: number) {

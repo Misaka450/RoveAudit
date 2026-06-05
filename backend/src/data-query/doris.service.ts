@@ -13,12 +13,13 @@ export class DorisService {
 
   constructor(private configService: ConfigService) {
     // 创建 Doris 连接池
+    const dorisPassword = this.configService.get('DORIS_PASSWORD', '');
     this.pool = mysql.createPool({
       host: this.configService.get('DORIS_HOST', 'localhost'),
       port: this.configService.get('DORIS_PORT', 9030),
       user: this.configService.get('DORIS_USER', 'root'),
-      password: this.configService.get('DORIS_PASSWORD', '123456'),
-      database: this.configService.get('DORIS_DATABASE', 'business_data'),
+      password: dorisPassword || undefined,
+      database: this.configService.get('DORIS_DATABASE', 'audit_db'),
       waitForConnections: true,
       connectionLimit: 10,
       queueLimit: 0,
