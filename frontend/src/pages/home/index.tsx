@@ -9,35 +9,53 @@ import {
   ClockCircleOutlined,
   FireOutlined,
 } from '@ant-design/icons';
+import { reportApi } from '@/api';
+import type { ReportConfig } from '@/types';
 
 const { Title, Text } = Typography;
 
 /**
  * 首页 - 数据概览 + 快捷入口
+ * 最近访问从 localStorage 读取（在 ReportListPage 中记录）
  */
 export default function HomePage() {
-  const [stats, setStats] = useState({
-    reportCount: 0,
-    todayUpdate: 0,
-    monthDownload: 0,
-    onlineUsers: 0,
-    recentVisits: [] as string[],
-    favorites: [] as string[],
-    hotReports: [] as string[],
-  });
+  const [reports, setReports] = useState<ReportConfig[]>([]);
+  const [recentVisits, setRecentVisits] = useState<string[]>([]);
 
   useEffect(() => {
-    // 模拟加载首页数据（实际项目中需要调用后端接口）
-    setStats({
-      reportCount: 6,
-      todayUpdate: 3,
-      monthDownload: 128,
-      onlineUsers: 12,
-      recentVisits: ['用户发展清单', '收入分析清单', '稽核清单'],
-      favorites: ['用户发展清单', '流量统计清单'],
-      hotReports: ['用户发展清单', '收入分析清单', '稽核清单', '流量统计清单'],
-    });
+    // 加载所有清单
+    reportApi.list().then(setReports).catch(() => {});
+
+    // 从 localStorage 读取最近访问记录
+    try {
+      const visits = JSON.parse(localStorage.getItem('recentVisits') || '[]') as string[];
+      // 将编码映射为名称
+      setRecentVisits(visits);
+    } catch {
+      setRecentVisits([]);
+    }
   }, []);
+
+  /** 将 reportCode 转换为 reportName */
+  const getReportName = (code: string) => {
+    const r = reports.find((r) => r.reportCode === code);
+    return r ? r.reportName : code;
+  };
+
+  const stats = {
+    reportCount: reports.length,
+    todayUpdate: Math.floor(Math.random() * 5) + 1, // 模拟
+    monthDownload: 128, // 从后端获取（待完善）
+    onlineUsers: 12, // 从后端获取（待完善）
+  };
+
+  // 最近访问的清单名称
+  const recentNames = recentVisits.map(getReportName).filter(Boolean);
+
+  // 热门清单（按 sortOrder 排序取前5）
+  const hotReports = [...reports]
+    .sort((a, b) => (a.sortOrder || 99) - (b.sortOrder || 99))
+    .slice(0, 5);
 
   return (
     <div>
@@ -95,7 +113,7 @@ export default function HomePage() {
             variant="borderless"
           >
             <List
-              dataSource={stats.recentVisits}
+              dataSource={recentNames}
               renderItem={(item) => (
                 <List.Item>
                   <Text>{item}</Text>
@@ -111,7 +129,7 @@ export default function HomePage() {
             variant="borderless"
           >
             <List
-              dataSource={stats.favorites}
+              dataSource={reports.slice(0, 5).map((r) => r.reportName)}
               renderItem={(item) => (
                 <List.Item>
                   <Text>{item}</Text>
@@ -127,13 +145,13 @@ export default function HomePage() {
             variant="borderless"
           >
             <List
-              dataSource={stats.hotReports}
+              dataSource={hotReports}
               renderItem={(item, index) => (
                 <List.Item>
                   <Tag color={index === 0 ? 'red' : index === 1 ? 'orange' : 'blue'}>
                     {index + 1}
                   </Tag>
-                  <Text>{item}</Text>
+                  <Text>{item.reportName}</Text>
                 </List.Item>
               )}
               locale={{ emptyText: '暂无数据' }}

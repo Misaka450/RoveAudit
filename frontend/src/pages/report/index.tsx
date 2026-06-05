@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
-import { Card, Tabs, Tag, Row, Col, Button, Space, Empty } from 'antd';
+import { Card, Tabs, Tag, Row, Col, Button, Space, Empty, Input } from 'antd';
 import { TableOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import { reportApi } from '@/api';
 import type { ReportConfig } from '@/types';
 
+const { Search } = Input;
+
 /**
  * 清单中心 - 清单入口（点击卡片跳转到对应清单详情页）
+ * 支持按分类筛选 + 关键词搜索 + 最近使用记录
  */
 export default function ReportCenter() {
   const [categories, setCategories] = useState<string[]>([]);
@@ -32,7 +35,7 @@ export default function ReportCenter() {
   return (
     <div>
       <Card style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
           <Tabs
             activeKey={activeCategory || 'all'}
             onChange={handleCategoryChange}
@@ -40,10 +43,21 @@ export default function ReportCenter() {
               { key: 'all', label: '全部' },
               ...categories.map((cat) => ({ key: cat, label: cat })),
             ]}
+            style={{ marginBottom: 0 }}
           />
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => window.location.href = '/system/reports'}>
-            新增清单
-          </Button>
+          <Space>
+            <Search
+              placeholder="搜索清单名称/编码"
+              prefix={<SearchOutlined />}
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+              allowClear
+              style={{ width: 220 }}
+            />
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => window.location.href = '/system/reports'}>
+              新增清单
+            </Button>
+          </Space>
         </div>
       </Card>
 

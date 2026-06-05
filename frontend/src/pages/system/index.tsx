@@ -3,6 +3,7 @@ import { Card, Table, Button, Space, Input, Modal, Form, Select, Tree, Tag, mess
 import { PlusOutlined, SearchOutlined, EditOutlined, DeleteOutlined, KeyOutlined } from '@ant-design/icons';
 import { userApi, roleApi, menuApi } from '@/api';
 import type { User, Role } from '@/types';
+import DownloadLogPage from './download-logs';
 
 // ==================== 用户管理 ====================
 function UserManagement() {
@@ -169,6 +170,7 @@ export default function SystemManagement() {
       <Tabs items={[
         { key: 'users', label: '用户管理', children: <UserManagement /> },
         { key: 'roles', label: '角色管理', children: <RoleManagement /> },
+        { key: 'download-logs', label: '下载日志', children: <DownloadLogPage /> },
       ]} />
     </Card>
   );

@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like } from 'typeorm';
 import { Report } from './entities/report.entity';
+import { CacheService } from '../common/cache.service';
 
 /**
  * 清单配置管理服务 - 配置化清单的核心
@@ -12,21 +13,30 @@ export class ReportService {
   constructor(
     @InjectRepository(Report)
     private reportRepository: Repository<Report>,
+    private cacheService: CacheService,
   ) {}
 
   /**
    * 查询所有启用的清单（按分类和排序号排列）
    */
   async findAll(category?: string) {
+    // 缓存 30 秒，避免频繁查询
+    const cacheKey = category ? `reports:${category}` : 'reports:all';
+    const cached = this.cacheService.get(cacheKey);
+    if (cached) return cached;
+
     const where: any = { status: 1 };
     if (category) {
       where.category = category;
     }
-    return this.reportRepository.find({
+    const result = await this.reportRepository.find({
       where,
       order: { category: 'ASC', sortOrder: 'ASC' },
       select: ['id', 'reportName', 'reportCode', 'category', 'description', 'enableDownload', 'enableChart', 'sortOrder', 'updateTime'],
     });
+
+    this.cacheService.set(cacheKey, result);
+    return result;
   }
 
   /**
@@ -46,6 +56,13 @@ export class ReportService {
     return this.reportRepository.find({ order: { createTime: 'DESC' } });
   }
 
+  /** 清除清单相关缓存（在增/删/改后调用，避免脏数据） */
+  private clearCache() {
+    this.cacheService.del('reports:all');
+    this.cacheService.del('reports:categories');
+    // 按分类的缓存无法全部清除，但已失效的会在 30 秒后自动过期
+  }
+
   /**
    * 根据ID查询清单详情（含SQL内容）
    */
@@ -59,10 +76,16 @@ export class ReportService {
    * 根据编码查询清单（用于数据查询接口）
    */
   async findByCode(reportCode: string) {
+    const cacheKey = `report:code:${reportCode}`;
+    const cached = this.cacheService.get<Report>(cacheKey);
+    if (cached) return cached;
+
     const report = await this.reportRepository.findOne({
       where: { reportCode, status: 1 },
     });
     if (!report) throw new NotFoundException('清单不存在或已禁用');
+
+    this.cacheService.set(cacheKey, report);
     return report;
   }
 
@@ -71,7 +94,9 @@ export class ReportService {
    */
   async create(data: Partial<Report>) {
     const report = this.reportRepository.create(data);
-    return this.reportRepository.save(report);
+    const saved = await this.reportRepository.save(report);
+    this.clearCache();
+    return saved;
   }
 
   /**
@@ -79,6 +104,7 @@ export class ReportService {
    */
   async update(id: number, data: Partial<Report>) {
     await this.reportRepository.update(id, data);
+    this.clearCache();
     return this.findOne(id);
   }
 
@@ -87,18 +113,26 @@ export class ReportService {
    */
   async remove(id: number) {
     const report = await this.findOne(id);
-    return this.reportRepository.remove(report);
+    const result = await this.reportRepository.remove(report);
+    this.clearCache();
+    return result;
   }
 
   /**
    * 获取所有清单分类（用于前端分类筛选）
    */
   async getCategories() {
+    const cached = this.cacheService.get<string[]>('reports:categories');
+    if (cached) return cached;
+
     const result = await this.reportRepository
       .createQueryBuilder('report')
       .select('DISTINCT report.category', 'category')
       .where('report.status = 1')
       .getRawMany();
-    return result.map((r) => r.category);
+    const categories = result.map((r) => r.category);
+
+    this.cacheService.set('reports:categories', categories);
+    return categories;
   }
 }

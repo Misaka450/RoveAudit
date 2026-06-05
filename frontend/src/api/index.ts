@@ -86,6 +86,33 @@ export const reportApi = {
 };
 
 /**
+ * 清单字段配置 API
+ */
+export const reportColumnApi = {
+  /** 获取字段配置 */
+  get: (reportCode: string): Promise<any[]> =>
+    request.get(`/report-columns/${reportCode}`),
+  /** 批量保存字段配置 */
+  save: (reportCode: string, columns: any[]) =>
+    request.put(`/report-columns/${reportCode}`, columns),
+};
+
+/**
+ * 清单图表配置 API
+ */
+export const reportChartApi = {
+  /** 获取所有图表配置 */
+  listAll: (): Promise<any[]> => request.get('/report-charts'),
+  /** 获取清单的图表配置 */
+  list: (reportCode: string): Promise<any[]> =>
+    request.get(`/report-charts/${reportCode}`),
+  /** 创建图表配置 */
+  create: (data: any) => request.post('/report-charts', data),
+  /** 更新图表配置 */
+  update: (id: number, data: any) => request.put(`/report-charts/${id}`, data),
+};
+
+/**
  * 数据查询 API
  */
 export const dataQueryApi = {
@@ -95,6 +122,9 @@ export const dataQueryApi = {
   /** 执行自定义 SQL */
   execute: (sql: string): Promise<any[]> =>
     request.post('/data-query/execute', { sql }),
+  /** 查询预览数据（仅前5行） */
+  preview: (reportCode: string, params: any = {}): Promise<any[]> =>
+    request.get(`/data-query/report/${reportCode}`, { params: { ...params, pageSize: 5 } }),
 };
 
 /**

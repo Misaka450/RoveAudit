@@ -94,3 +94,41 @@ export interface User {
   roles: Role[];
   createTime: string;
 }
+
+// 清单字段配置类型
+export interface ReportColumnConfig {
+  id?: number;
+  reportCode: string;
+  columnName: string;
+  columnLabel: string;
+  width: number;
+  align: 'left' | 'center' | 'right';
+  sortable: number;
+  filterable: number;
+  visible: number;
+  sortOrder: number;
+  isDate: number;
+}
+
+// 查询参数配置类型（对应 query_params JSON）
+export interface QueryParamConfig {
+  key: string;
+  label: string;
+  type: 'text' | 'select' | 'month' | 'date' | 'dateRange';
+  required?: boolean;
+  options?: { value: string; label: string }[];
+}
+
+// 清单图表配置类型
+export interface ReportChartConfig {
+  id?: number;
+  reportCode: string;
+  chartTitle: string;
+  chartType: 'line' | 'bar' | 'pie' | 'area';
+  dimensionColumn: string;
+  metricColumns: string;
+  metricLabels: string;
+  isRing: number;
+  status: number;
+  sortOrder: number;
+}
