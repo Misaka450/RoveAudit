@@ -118,71 +118,57 @@ export const warningApi = {
 };
 
 /**
+ * 通用下载函数 - 支持 Excel / CSV
+ * 使用 fetch 手动请求以支持自定义请求头，避免 window.open 无法传 token 的问题
+ */
+const downloadFile = async (
+  type: 'excel' | 'csv',
+  reportCode: string,
+  params: any = {},
+) => {
+  const token = localStorage.getItem('token');
+  const cleanParams: Record<string, string> = { reportCode };
+  const filters: Record<string, string> = {};
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      if (key === 'startDate' || key === 'endDate') {
+        cleanParams[key] = String(value);
+      } else {
+        filters[key] = String(value);
+      }
+    }
+  });
+  if (Object.keys(filters).length > 0) {
+    cleanParams.filters = JSON.stringify(filters);
+  }
+  const query = new URLSearchParams(cleanParams).toString();
+  const resp = await fetch(`/api/download/${type}?${query}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!resp.ok) {
+    message.error('下载失败');
+    return;
+  }
+  const blob = await resp.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const disposition = resp.headers.get('content-disposition') || '';
+  const match = disposition.match(/filename=(.+)/);
+  a.download = match?.[1] ? decodeURIComponent(match[1]) : `${reportCode}.${type === 'excel' ? 'xlsx' : 'csv'}`;
+  a.click();
+  URL.revokeObjectURL(url);
+  message.success('下载完成');
+};
+
+/**
  * 下载 API
  */
 export const downloadApi = {
-  /** 下载 Excel（Blob 方式，支持筛选参数） */
-  excel: async (reportCode: string, params: any = {}) => {
-    const token = localStorage.getItem('token');
-    const cleanParams: Record<string, string> = { reportCode };
-    const filters: Record<string, string> = {};
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
-        if (key === 'startDate' || key === 'endDate') {
-          cleanParams[key] = String(value);
-        } else {
-          filters[key] = String(value);
-        }
-      }
-    });
-    if (Object.keys(filters).length > 0) {
-      cleanParams.filters = JSON.stringify(filters);
-    }
-    const query = new URLSearchParams(cleanParams).toString();
-    const resp = await fetch(`/api/download/excel?${query}`, {
-      headers: { 'Authorization': `Bearer ${token}` },
-    });
-    if (!resp.ok) { message.error('下载失败'); return; }
-    const blob = await resp.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = resp.headers.get('content-disposition')?.match(/filename=(.+)/)?.[1] || `${reportCode}.xlsx`;
-    a.click();
-    URL.revokeObjectURL(url);
-    message.success('下载完成');
-  },
-  /** 下载 CSV（Blob 方式，支持筛选参数） */
-  csv: async (reportCode: string, params: any = {}) => {
-    const token = localStorage.getItem('token');
-    const cleanParams: Record<string, string> = { reportCode };
-    const filters: Record<string, string> = {};
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
-        if (key === 'startDate' || key === 'endDate') {
-          cleanParams[key] = String(value);
-        } else {
-          filters[key] = String(value);
-        }
-      }
-    });
-    if (Object.keys(filters).length > 0) {
-      cleanParams.filters = JSON.stringify(filters);
-    }
-    const query = new URLSearchParams(cleanParams).toString();
-    const resp = await fetch(`/api/download/csv?${query}`, {
-      headers: { 'Authorization': `Bearer ${token}` },
-    });
-    if (!resp.ok) { message.error('下载失败'); return; }
-    const blob = await resp.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = resp.headers.get('content-disposition')?.match(/filename=(.+)/)?.[1] || `${reportCode}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    message.success('下载完成');
-  },
+  /** 下载 Excel */
+  excel: (reportCode: string, params?: any) => downloadFile('excel', reportCode, params),
+  /** 下载 CSV */
+  csv: (reportCode: string, params?: any) => downloadFile('csv', reportCode, params),
 };
 
 /**

@@ -28,15 +28,22 @@ export class DataQueryService {
 
     // 2. 处理 SQL 模板（替换参数占位符）
     let sql = report.sqlContent;
+    const queryParams: any[] = [];
     for (const key of Object.keys(params)) {
       const value = params[key];
       if (value !== undefined && value !== null && value !== '' && key !== 'filters') {
         const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
-        sql = sql.replace(regex, this.escapeValue(value));
+        // 使用 ? 占位符替代直接嵌入值
+        if (regex.test(sql)) {
+          sql = sql.replace(regex, '?');
+          queryParams.push(value);
+          // 重置正则 lastIndex
+          regex.lastIndex = 0;
+        }
       }
     }
 
-    // 3. 应用字段筛选（filters: { column: value }）
+    // 3. 应用字段筛选（filters: { column: value }）— 使用参数化查询防 SQL 注入
     if (params.filters && typeof params.filters === 'object') {
       for (const [column, value] of Object.entries(params.filters)) {
         if (value !== undefined && value !== null && value !== '') {
@@ -44,8 +51,8 @@ export class DataQueryService {
           if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(column)) {
             continue;
           }
-          const escapedValue = String(value).replace(/'/g, "''").replace(/\\/g, '\\\\');
-          sql += ` AND ${column} LIKE '%${escapedValue}%'`;
+          sql += ` AND ${column} LIKE ?`;
+          queryParams.push(`%${value}%`);
         }
       }
     }
@@ -56,13 +63,14 @@ export class DataQueryService {
       throw new BadRequestException('只允许执行 SELECT 查询');
     }
 
-    // 5. 获取总条数
-    const total = await this.dorisService.count(sql);
+    // 5. 获取总条数（传递参数）
+    const total = await this.dorisService.count(sql, queryParams);
 
     // 6. 分页查询（Doris/MySQL 语法：LIMIT offset, count）
     const offset = (page - 1) * pageSize;
-    const paginatedSql = `${sql} LIMIT ${offset}, ${pageSize}`;
-    const data = await this.dorisService.query(paginatedSql);
+    const paginatedSql = `${sql} LIMIT ?, ?`;
+    const paginatedParams = [...queryParams, offset, pageSize];
+    const data = await this.dorisService.query(paginatedSql, paginatedParams);
 
     return {
       list: data,
@@ -82,16 +90,5 @@ export class DataQueryService {
       throw new BadRequestException('只允许执行 SELECT 查询');
     }
     return this.dorisService.query(sql);
-  }
-
-  /**
-   * 对 SQL 中的值进行安全转义（防 SQL 注入）
-   */
-  private escapeValue(value: any): string {
-    if (typeof value === 'number') {
-      return String(value);
-    }
-    const escaped = String(value).replace(/'/g, "''").replace(/\\/g, '\\\\');
-    return `'${escaped}'`;
   }
 }

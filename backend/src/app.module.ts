@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
 // 业务模块
 import { AuthModule } from './auth/auth.module';
@@ -20,7 +22,7 @@ import { WarningModule } from './warning/warning.module';
   imports: [
     // --- 环境变量配置（全局可用）---
     ConfigModule.forRoot({
-      isGlobal: true, // 全局模块，无需在每个模块重复导入
+      isGlobal: true,
       envFilePath: '.env',
     }),
 
@@ -35,11 +37,17 @@ import { WarningModule } from './warning/warning.module';
         username: config.get('PG_USER', 'postgres'),
         password: config.get('PG_PASSWORD', '123456'),
         database: config.get('PG_DATABASE', 'data_portal'),
-        entities: [__dirname + '/**/entities/*.entity{.ts,.js}'], // 自动扫描实体
-        synchronize: false, // 生产环境关闭自动同步
+        entities: [__dirname + '/**/entities/*.entity{.ts,.js}'],
+        synchronize: false,
         logging: false,
       }),
     }),
+
+    // --- 请求限流（防刷接口）---
+    ThrottlerModule.forRoot([{
+      ttl: 60000,    // 每分钟
+      limit: 120,    // 最多 120 次请求（平均每秒2次）
+    }]),
 
     // --- 定时任务模块 ---
     ScheduleModule.forRoot(),
@@ -55,5 +63,9 @@ import { WarningModule } from './warning/warning.module';
     WarningModule,
   ],
   controllers: [AppController],
+  providers: [
+    // 全局限流守卫
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+  ],
 })
 export class AppModule {}

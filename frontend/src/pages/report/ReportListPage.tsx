@@ -146,12 +146,11 @@ export default function ReportListPage() {
   }, [loadData]);
 
   const handleDownload = (type: 'excel' | 'csv') => {
-    if (!report) return;
+    if (!report || !reportCode) return;
     if (!report.enableDownload) { message.warning('该清单不允许下载'); return; }
     const extraParams: any = { ...activeFilters };
     if (dateRange) { extraParams.startDate = dateRange[0]; extraParams.endDate = dateRange[1]; }
-    if (type === 'excel') downloadApi.excel(reportCode, extraParams);
-    else downloadApi.csv(reportCode, extraParams);
+    downloadApi[type](reportCode, extraParams);
   };
 
   const activeFilterCount = Object.keys(activeFilters).length + (dateRange ? 1 : 0);

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Layout, Menu, Button, Dropdown, Avatar, theme } from 'antd';
+import { Layout, Menu, Button, Dropdown, Avatar, theme, message } from 'antd';
 import {
   HomeOutlined,
   TableOutlined,
@@ -47,38 +47,28 @@ export default function MainLayout() {
   const { userInfo, logout } = useAuthStore();
   const { token: themeToken } = theme.useToken();
 
+  // 使用 useCallback 定义菜单加载函数（稳定引用，避免重复执行）
+  const loadMenus = useCallback(async () => {
+    try {
+      const data = await menuApi.tree();
+      if (data && data.length > 0) {
+        const items = buildMenuItems(data);
+        setMenuItems(items);
+      } else {
+        message.warning('未获取到菜单数据，请检查权限分配');
+      }
+    } catch (err: any) {
+      message.error('菜单加载失败: ' + (err?.message || '接口异常'));
+      setMenuItems([
+        { key: '/home', icon: <HomeOutlined />, label: '首页' },
+      ]);
+    }
+  }, []);
+
   // 加载菜单数据
   useEffect(() => {
     loadMenus();
-  }, []);
-
-  const loadMenus = async () => {
-    try {
-      const data = await menuApi.tree();
-      const items = buildMenuItems(data);
-      setMenuItems(items);
-    } catch {
-      // 如果菜单加载失败，使用默认菜单
-      setMenuItems([
-        { key: '/home', icon: <HomeOutlined />, label: '首页' },
-        { key: '/report-center', icon: <TableOutlined />, label: '清单中心' },
-        { key: '/analysis', icon: <BarChartOutlined />, label: '统计分析' },
-        { key: '/warning-center', icon: <AlertOutlined />, label: '异常分析' },
-        {
-          key: '/system',
-          icon: <SettingOutlined />,
-          label: '系统管理',
-          children: [
-            { key: '/system/users', icon: <UserOutlined />, label: '用户管理' },
-            { key: '/system/roles', icon: <TeamOutlined />, label: '角色管理' },
-            { key: '/system/menus', icon: <MenuOutlined />, label: '菜单管理' },
-            { key: '/system/reports', icon: <FileTextOutlined />, label: '清单配置' },
-            { key: '/system/warning-rules', icon: <AlertOutlined />, label: '异常规则' },
-          ],
-        },
-      ]);
-    }
-  };
+  }, [loadMenus]);
 
   /**
    * 递归构建 Ant Design Menu 组件所需的菜单项
