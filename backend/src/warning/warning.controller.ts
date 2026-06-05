@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { WarningService } from './warning.service';
+import { CreateWarningRuleDto } from '../common/dto/request.dto';
 
 /**
  * 异常规则管理控制器
@@ -24,13 +25,13 @@ export class WarningController {
 
   @Post('rules')
   @ApiOperation({ summary: '创建异常规则' })
-  create(@Body() data: any) {
+  create(@Body() data: CreateWarningRuleDto) {
     return this.warningService.create(data);
   }
 
   @Put('rules/:id')
   @ApiOperation({ summary: '更新异常规则' })
-  update(@Param('id') id: number, @Body() data: any) {
+  update(@Param('id') id: number, @Body() data: Partial<CreateWarningRuleDto>) {
     return this.warningService.update(id, data);
   }
 
@@ -64,5 +65,17 @@ export class WarningController {
       lastRunTime: r.lastRunTime,
       lastResultCount: r.lastResultCount,
     }));
+  }
+
+  @Get('trend')
+  @ApiOperation({ summary: '获取异常趋势数据（按天统计各风险等级）' })
+  getTrend(@Query('days') days?: number) {
+    return this.warningService.getTrendData(days || 30);
+  }
+
+  @Get('distribution')
+  @ApiOperation({ summary: '获取异常类型占比分布' })
+  getDistribution() {
+    return this.warningService.getTypeDistribution();
   }
 }

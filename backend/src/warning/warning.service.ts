@@ -1,9 +1,11 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Between } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { WarningRule } from './entities/warning-rule.entity';
+import { WarningResult } from './entities/warning-result.entity';
 import { DorisService } from '../data-query/doris.service';
+import { NotificationService } from '../common/notification.service';
 
 /**
  * 异常规则管理服务 - 异常规则的 CRUD + 定时检测
@@ -15,7 +17,10 @@ export class WarningService {
   constructor(
     @InjectRepository(WarningRule)
     private warningRuleRepository: Repository<WarningRule>,
+    @InjectRepository(WarningResult)
+    private warningResultRepository: Repository<WarningResult>,
     private dorisService: DorisService,
+    private notificationService: NotificationService,
   ) {}
 
   /**
@@ -134,6 +139,26 @@ export class WarningService {
       lastResultCount: count,
     });
 
+    // 持久化检测结果到 warning_result 表
+    await this.warningResultRepository.save({
+      ruleId: rule.id,
+      ruleName: rule.ruleName,
+      ruleType: rule.ruleType,
+      riskLevel: rule.riskLevel,
+      resultCount: count,
+      resultData: data.slice(0, 100), // 最多保存前100条
+    });
+
+    // 发现异常时发送告警通知（高风险且数量 > 0）
+    if (count > 0 && rule.riskLevel === 'high') {
+      this.notificationService.sendAlert(
+        rule.ruleName,
+        rule.ruleType,
+        rule.riskLevel,
+        count,
+      );
+    }
+
     this.logger.log(`规则 "${rule.ruleName}" 执行完成，发现 ${count} 条异常`);
 
     return {
@@ -143,7 +168,59 @@ export class WarningService {
       riskLevel: rule.riskLevel,
       status: 'success',
       count,
-      data: data.slice(0, 100), // 最多返回前100条
+      data: data.slice(0, 100),
     };
+  }
+
+  /**
+   * 获取异常趋势数据（按天分组统计各风险等级的异常数量）
+   * @param days 最近 N 天，默认 30 天
+   */
+  async getTrendData(days: number = 30) {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+
+    const results = await this.warningResultRepository.find({
+      where: { createTime: Between(startDate, new Date()) },
+      order: { createTime: 'ASC' },
+    });
+
+    // 按日期 + 风险等级分组统计
+    const trendMap = new Map<string, { high: number; medium: number; low: number }>();
+    for (const r of results) {
+      const dateKey = r.createTime.toISOString().slice(0, 10); // YYYY-MM-DD
+      if (!trendMap.has(dateKey)) {
+        trendMap.set(dateKey, { high: 0, medium: 0, low: 0 });
+      }
+      const entry = trendMap.get(dateKey)!;
+      if (r.riskLevel === 'high') entry.high += r.resultCount;
+      else if (r.riskLevel === 'medium') entry.medium += r.resultCount;
+      else entry.low += r.resultCount;
+    }
+
+    return {
+      dates: Array.from(trendMap.keys()),
+      high: Array.from(trendMap.values()).map((v) => v.high),
+      medium: Array.from(trendMap.values()).map((v) => v.medium),
+      low: Array.from(trendMap.values()).map((v) => v.low),
+    };
+  }
+
+  /**
+   * 获取异常类型占比数据
+   */
+  async getTypeDistribution() {
+    const results = await this.warningResultRepository.find({
+      order: { createTime: 'DESC' },
+      take: 1000,
+    });
+
+    // 按规则类型分组统计异常数量
+    const typeMap = new Map<string, number>();
+    for (const r of results) {
+      typeMap.set(r.ruleType, (typeMap.get(r.ruleType) || 0) + r.resultCount);
+    }
+
+    return Array.from(typeMap.entries()).map(([name, value]) => ({ name, value }));
   }
 }

@@ -17,18 +17,18 @@ export default function DownloadLogPage() {
       const data = await downloadLogApi.list(keyword || undefined);
       setLogs(data);
     } catch {
-      // 后端接口可能不存在，使用模拟数据
-      setLogs([
-        { id: 1, username: 'admin', reportName: '用户清单', fileName: '用户清单_1717500000000.xlsx', fileType: 'excel', dataCount: 156, downloadTime: '2026-06-05 10:30:00' },
-        { id: 2, username: 'admin', reportName: '订单清单', fileName: '订单清单_1717500000001.csv', fileType: 'csv', dataCount: 89, downloadTime: '2026-06-05 10:25:00' },
-        { id: 3, username: 'zhangsan', reportName: '用户清单', fileName: '用户清单_1717500000002.xlsx', fileType: 'excel', dataCount: 200, downloadTime: '2026-06-05 09:15:00' },
-      ]);
+      message.error('加载下载日志失败');
+      setLogs([]);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { loadLogs(); }, []);
+  useEffect(() => {
+    const abortController = new AbortController();
+    loadLogs();
+    return () => abortController.abort();
+  }, []);
 
   const handleDelete = async (id: number) => {
     try {

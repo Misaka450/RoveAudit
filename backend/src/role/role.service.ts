@@ -44,7 +44,7 @@ export class RoleService {
   /**
    * 创建角色
    */
-  async create(data: { roleName: string; roleCode: string; description?: string; menuIds?: number[]; permissionIds?: number[] }) {
+  async create(data: { roleName: string; roleCode?: string; description?: string; menuIds?: number[]; permissionIds?: number[] }) {
     const role = this.roleRepository.create(data);
 
     if (data.menuIds?.length) {

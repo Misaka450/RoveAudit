@@ -28,9 +28,9 @@ export class CacheService {
    * 设置缓存
    * @param key 缓存键
    * @param value 缓存值
-   * @param ttl 过期时间（秒），默认 30 秒
+   * @param ttl 过期时间（秒），默认 300 秒（5 分钟）
    */
-  set(key: string, value: any, ttl: number = 30) {
+  set(key: string, value: any, ttl: number = 300) {
     this.store.set(key, {
       value,
       expiresAt: Date.now() + ttl * 1000,

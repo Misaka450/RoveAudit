@@ -6,6 +6,7 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { CacheService } from './common/cache.service';
+import { NotificationService } from './common/notification.service';
 // 业务模块
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
@@ -67,6 +68,7 @@ import { WarningModule } from './warning/warning.module';
   providers: [
     // 全局服务（各模块可注入使用）
     CacheService,
+    NotificationService,
     // 全局限流守卫
     { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],

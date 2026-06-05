@@ -36,6 +36,7 @@ export default function ReportListPage() {
   // 加载清单配置
   useEffect(() => {
     if (!reportCode) return;
+    const abortController = new AbortController();
     reportApi.list().then((list) => {
       const found = list.find((r) => r.reportCode === reportCode);
       setReport(found || null);
@@ -46,6 +47,7 @@ export default function ReportListPage() {
       const updated = [reportCode, ...visits.filter((v) => v !== reportCode)].slice(0, 10);
       localStorage.setItem('recentVisits', JSON.stringify(updated));
     } catch { /* */ }
+    return () => abortController.abort();
   }, [reportCode]);
 
   // 从数据中提取列定义

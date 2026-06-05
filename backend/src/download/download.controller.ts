@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Response } from 'express';
 import { DownloadService } from './download.service';
 import { Public } from '../common/decorators/public.decorator';
+import { Permission } from '../common/decorators/permission.decorator';
 
 /**
  * 下载控制器 - 处理 Excel / CSV 文件下载
@@ -104,6 +105,7 @@ export class DownloadController {
 
   /** 获取下载统计 */
   @Get('stats')
+  @Permission('report:view')
   @ApiOperation({ summary: '获取下载统计（今日/本月下载量、热门排行）' })
   async getStats() {
     return this.downloadService.getStats();

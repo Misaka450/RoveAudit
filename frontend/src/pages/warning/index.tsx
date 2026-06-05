@@ -11,20 +11,23 @@ export default function WarningPage() {
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [executing, setExecuting] = useState(false);
+  const [trendData, setTrendData] = useState<{ dates: string[]; high: number[]; medium: number[]; low: number[] } | null>(null);
+  const [distribution, setDistribution] = useState<{ name: string; value: number }[]>([]);
 
   // 加载异常检测结果
   const loadResults = async () => {
     setLoading(true);
     try {
-      const data = await warningApi.getResults();
-      setResults(data);
-    } catch {
-      // 后端未启动时会走这里，使用模拟数据
-      setResults([
-        { id: 1, ruleName: '用户数据异常', ruleType: '数据波动', riskLevel: 'high', lastRunTime: '2024-06-01 10:00', lastResultCount: 156 },
-        { id: 2, ruleName: '收入数据下降', ruleType: '趋势异常', riskLevel: 'medium', lastRunTime: '2024-06-01 10:00', lastResultCount: 89 },
-        { id: 3, ruleName: '流量突增', ruleType: '流量异常', riskLevel: 'high', lastRunTime: '2024-06-01 10:00', lastResultCount: 432 },
+      const [resultsData, trend, dist] = await Promise.all([
+        warningApi.getResults(),
+        warningApi.getTrend(),
+        warningApi.getDistribution(),
       ]);
+      setResults(resultsData);
+      setTrendData(trend);
+      setDistribution(dist);
+    } catch {
+      message.error('加载预警数据失败，请检查后端服务');
     } finally {
       setLoading(false);
     }
@@ -46,32 +49,27 @@ export default function WarningPage() {
     }
   };
 
-  // 异常趋势图（示例数据）
+  // 异常趋势图（基于真实数据）
   const trendOption = {
     tooltip: { trigger: 'axis' },
     legend: { data: ['高风险', '中风险', '低风险'], bottom: 0 },
-    xAxis: { type: 'category', data: ['1月', '2月', '3月', '4月', '5月', '6月'] },
+    xAxis: { type: 'category', data: trendData?.dates || [] },
     yAxis: { type: 'value', name: '异常数量' },
     series: [
-      { name: '高风险', type: 'line', data: [15, 20, 18, 25, 22, 30], smooth: true, itemStyle: { color: '#ff4d4f' } },
-      { name: '中风险', type: 'line', data: [45, 50, 42, 55, 48, 60], smooth: true, itemStyle: { color: '#faad14' } },
-      { name: '低风险', type: 'line', data: [80, 90, 85, 100, 95, 110], smooth: true, itemStyle: { color: '#52c41a' } },
+      { name: '高风险', type: 'line', data: trendData?.high || [], smooth: true, itemStyle: { color: '#ff4d4f' } },
+      { name: '中风险', type: 'line', data: trendData?.medium || [], smooth: true, itemStyle: { color: '#faad14' } },
+      { name: '低风险', type: 'line', data: trendData?.low || [], smooth: true, itemStyle: { color: '#52c41a' } },
     ],
   };
 
-  // 异常类型占比图
+  // 异常类型占比图（基于真实数据）
   const pieOption = {
     tooltip: { trigger: 'item' },
     legend: { bottom: 0 },
     series: [{
       type: 'pie',
       radius: '60%',
-      data: [
-        { value: 156, name: '数据波动' },
-        { value: 89, name: '趋势异常' },
-        { value: 432, name: '流量异常' },
-        { value: 67, name: '其他异常' },
-      ],
+      data: distribution.length > 0 ? distribution : [{ name: '暂无数据', value: 1 }],
     }],
   };
 

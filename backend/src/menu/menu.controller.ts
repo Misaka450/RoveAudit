@@ -2,6 +2,7 @@ import { Controller, Get, Post, Put, Delete, Body, Param } from '@nestjs/common'
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { MenuService } from './menu.service';
 import { Public } from '../common/decorators/public.decorator';
+import { CreateMenuDto } from '../common/dto/request.dto';
 
 /**
  * 菜单管理控制器
@@ -32,13 +33,13 @@ export class MenuController {
 
   @Post()
   @ApiOperation({ summary: '创建菜单' })
-  create(@Body() data: any) {
+  create(@Body() data: CreateMenuDto) {
     return this.menuService.create(data);
   }
 
   @Put(':id')
   @ApiOperation({ summary: '更新菜单' })
-  update(@Param('id') id: number, @Body() data: any) {
+  update(@Param('id') id: number, @Body() data: Partial<CreateMenuDto>) {
     return this.menuService.update(id, data);
   }
 

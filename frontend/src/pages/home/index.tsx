@@ -22,6 +22,8 @@ export default function HomePage() {
   const [stats, setStats] = useState({ todayCount: 0, monthCount: 0, totalDownloads: 0 });
 
   useEffect(() => {
+    const abortController = new AbortController();
+
     // 加载所有清单
     reportApi.list().then(setReports).catch(() => {});
 
@@ -30,7 +32,7 @@ export default function HomePage() {
       setStats({
         todayCount: data.todayCount,
         monthCount: data.monthCount,
-        totalDownloads: data.monthCount, // 用月下载量近似展示
+        totalDownloads: data.monthCount,
       });
     }).catch(() => {});
 
@@ -41,6 +43,8 @@ export default function HomePage() {
     } catch {
       setRecentVisits([]);
     }
+
+    return () => abortController.abort();
   }, []);
 
   /** 将 reportCode 转换为 reportName */

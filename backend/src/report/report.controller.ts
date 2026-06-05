@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { ReportService } from './report.service';
+import { CreateReportDto, UpdateReportDto } from '../common/dto/request.dto';
 
 /**
  * 清单配置管理控制器
@@ -36,13 +37,13 @@ export class ReportController {
 
   @Post()
   @ApiOperation({ summary: '创建清单配置' })
-  create(@Body() data: any) {
+  create(@Body() data: CreateReportDto) {
     return this.reportService.create(data);
   }
 
   @Put(':id')
   @ApiOperation({ summary: '更新清单配置' })
-  update(@Param('id') id: number, @Body() data: any) {
+  update(@Param('id') id: number, @Body() data: UpdateReportDto) {
     return this.reportService.update(id, data);
   }
 

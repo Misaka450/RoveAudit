@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { ReportColumnService } from './report-column.service';
 import { ReportChartService } from './report-chart.service';
@@ -57,5 +57,11 @@ export class ReportChartController {
   @ApiOperation({ summary: '更新图表配置' })
   update(@Param('id') id: number, @Body() data: any) {
     return this.chartService.update(id, data);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: '删除图表配置' })
+  remove(@Param('id') id: number) {
+    return this.chartService.remove(id);
   }
 }

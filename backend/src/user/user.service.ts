@@ -100,7 +100,8 @@ export class UserService {
   async resetPassword(id: number, newPassword: string) {
     const user = await this.findOne(id);
     user.password = await bcrypt.hash(newPassword, 10);
-    return this.userRepository.save(user);
+    await this.userRepository.save(user);
+    return { success: true, message: '密码重置成功' };
   }
 
   /**

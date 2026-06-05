@@ -1,20 +1,8 @@
+import React from 'react';
 import { useState, useEffect, useCallback } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { Layout, Menu, Button, Dropdown, Avatar, theme, message } from 'antd';
-import {
-  HomeOutlined,
-  TableOutlined,
-  BarChartOutlined,
-  AlertOutlined,
-  SettingOutlined,
-  UserOutlined,
-  TeamOutlined,
-  MenuOutlined,
-  FileTextOutlined,
-  LogoutOutlined,
-  MenuFoldOutlined,
-  MenuUnfoldOutlined,
-} from '@ant-design/icons';
+import * as Icons from '@ant-design/icons';
 import { useAuthStore } from '@/store/authStore';
 import { menuApi } from '@/api';
 import type { MenuItem } from '@/types';
@@ -22,18 +10,14 @@ import type { MenuItem } from '@/types';
 const { Header, Sider, Content } = Layout;
 
 /**
- * 图标映射表 - 将菜单中的图标字符串映射为 Ant Design 图标组件
+ * 动态获取图标组件 - 支持数据库中配置的任何 @ant-design/icons 图标
+ * 优先从常用图标映射表获取，未匹配时动态创建
  */
-const iconMap: Record<string, React.ReactNode> = {
-  HomeOutlined: <HomeOutlined />,
-  TableOutlined: <TableOutlined />,
-  BarChartOutlined: <BarChartOutlined />,
-  AlertOutlined: <AlertOutlined />,
-  SettingOutlined: <SettingOutlined />,
-  UserOutlined: <UserOutlined />,
-  TeamOutlined: <TeamOutlined />,
-  MenuOutlined: <MenuOutlined />,
-  FileTextOutlined: <FileTextOutlined />,
+const getIcon = (iconName?: string): React.ReactNode => {
+  if (!iconName) return null;
+  const IconComponent = (Icons as any)[iconName];
+  if (IconComponent) return React.createElement(IconComponent);
+  return null;
 };
 
 /**
@@ -60,7 +44,7 @@ export default function MainLayout() {
     } catch (err: any) {
       message.error('菜单加载失败: ' + (err?.message || '接口异常'));
       setMenuItems([
-        { key: '/home', icon: <HomeOutlined />, label: '首页' },
+        { key: '/home', icon: getIcon('HomeOutlined'), label: '首页' },
       ]);
     }
   }, []);
@@ -77,7 +61,7 @@ export default function MainLayout() {
     return menus.map((menu) => {
       const item: any = {
         key: menu.path,
-        icon: iconMap[menu.icon] || null,
+        icon: getIcon(menu.icon),
         label: menu.menuName,
       };
       if (menu.children && menu.children.length > 0) {
@@ -151,7 +135,7 @@ export default function MainLayout() {
           {/* 左侧：折叠按钮 */}
           <Button
             type="text"
-            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            icon={collapsed ? <Icons.MenuUnfoldOutlined /> : <Icons.MenuFoldOutlined />}
             onClick={() => setCollapsed(!collapsed)}
             style={{ fontSize: 16 }}
           />
@@ -160,12 +144,12 @@ export default function MainLayout() {
           <Dropdown
             menu={{
               items: [
-                { key: 'logout', icon: <LogoutOutlined />, label: '退出登录', onClick: handleLogout },
+                { key: 'logout', icon: <Icons.LogoutOutlined />, label: '退出登录', onClick: handleLogout },
               ],
             }}
           >
             <div style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Avatar icon={<UserOutlined />} style={{ backgroundColor: themeToken.colorPrimary }} />
+              <Avatar icon={<Icons.UserOutlined />} style={{ backgroundColor: themeToken.colorPrimary }} />
               <span>{userInfo?.realName || '用户'}</span>
             </div>
           </Dropdown>

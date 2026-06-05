@@ -110,6 +110,8 @@ export const reportChartApi = {
   create: (data: any) => request.post('/report-charts', data),
   /** 更新图表配置 */
   update: (id: number, data: any) => request.put(`/report-charts/${id}`, data),
+  /** 删除图表配置 */
+  remove: (id: number) => request.delete(`/report-charts/${id}`),
 };
 
 /**
@@ -135,6 +137,11 @@ export const warningApi = {
   listRules: (): Promise<any[]> => request.get('/warnings/rules'),
   /** 获取异常检测结果汇总 */
   getResults: (): Promise<any[]> => request.get('/warnings/results'),
+  /** 获取异常趋势数据 */
+  getTrend: (days?: number): Promise<{ dates: string[]; high: number[]; medium: number[]; low: number[] }> =>
+    request.get('/warnings/trend', { params: { days } }),
+  /** 获取异常类型占比 */
+  getDistribution: (): Promise<{ name: string; value: number }[]> => request.get('/warnings/distribution'),
   /** 创建规则 */
   createRule: (data: any) => request.post('/warnings/rules', data),
   /** 更新规则 */

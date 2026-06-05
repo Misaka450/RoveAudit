@@ -21,7 +21,7 @@ export class DorisService {
       password: dorisPassword || undefined,
       database: this.configService.get('DORIS_DATABASE', 'audit_db'),
       waitForConnections: true,
-      connectionLimit: 10,
+      connectionLimit: this.configService.get('DORIS_POOL_SIZE', 10),
       queueLimit: 0,
     });
     this.logger.log('Doris 连接池已创建');

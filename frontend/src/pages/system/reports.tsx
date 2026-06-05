@@ -188,8 +188,8 @@ export default function ReportConfigPage() {
 
   const handleDeleteChart = async (id: number) => {
     try {
-      await reportChartApi.update(id, { status: 0 });
-      message.success('已禁用');
+      await reportChartApi.remove(id);
+      message.success('图表已删除');
       if (editingReport) loadCharts(editingReport.reportCode);
     } catch {
       message.error('操作失败');
@@ -269,8 +269,8 @@ export default function ReportConfigPage() {
       render: (_: any, record: ReportChartConfig) => (
         <Space>
           <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEditChart(record)}>编辑</Button>
-          <Popconfirm title="确定禁用此图表？" onConfirm={() => handleDeleteChart(record.id!)}>
-            <Button type="link" danger size="small">禁用</Button>
+          <Popconfirm title="确定删除此图表？" onConfirm={() => handleDeleteChart(record.id!)}>
+            <Button type="link" danger size="small">删除</Button>
           </Popconfirm>
         </Space>
       ),
