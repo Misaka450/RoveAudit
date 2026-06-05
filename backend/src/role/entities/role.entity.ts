@@ -29,13 +29,13 @@ export class Role {
   @Column({ type: 'text', nullable: true, comment: '角色描述' })
   description: string;
 
-  @Column({ type: 'tinyint', default: 1, comment: '状态：1-启用 0-禁用' })
+  @Column({ type: 'smallint', default: 1, comment: '状态：1-启用 0-禁用' })
   status: number;
 
-  @CreateDateColumn({ name: 'create_time', comment: '创建时间' })
+  @CreateDateColumn({ name: 'create_time', type: 'timestamp', comment: '创建时间' })
   createTime: Date;
 
-  @UpdateDateColumn({ name: 'update_time', comment: '更新时间' })
+  @UpdateDateColumn({ name: 'update_time', type: 'timestamp', comment: '更新时间' })
   updateTime: Date;
 
   // 角色与用户：多对多（双向）

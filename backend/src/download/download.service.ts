@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Like } from 'typeorm';
 import * as ExcelJS from 'exceljs';
 import { DataQueryService } from '../data-query/data-query.service';
 import { ReportService } from '../report/report.service';
@@ -152,5 +152,27 @@ export class DownloadService {
     });
 
     return { buffer, fileName };
+  }
+
+  /** 查询下载日志 */
+  async findAll(keyword?: string) {
+    if (keyword) {
+      return this.downloadLogRepository.find({
+        where: [
+          { username: Like(`%${keyword}%`) },
+          { reportName: Like(`%${keyword}%`) },
+          { fileName: Like(`%${keyword}%`) },
+        ],
+        order: { downloadTime: 'DESC' },
+      });
+    }
+    return this.downloadLogRepository.find({
+      order: { downloadTime: 'DESC' },
+    });
+  }
+
+  /** 删除下载日志 */
+  async remove(id: number) {
+    return this.downloadLogRepository.delete(id);
   }
 }

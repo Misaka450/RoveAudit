@@ -8,9 +8,11 @@ import AnalysisPage from '@/pages/analysis';
 import WarningPage from '@/pages/warning';
 import UserPage from '@/pages/system/users';
 import RolePage from '@/pages/system/roles';
-import MenuPage from '@/pages/system/menus';
 import ReportConfigPage from '@/pages/system/reports';
 import WarningRulesPage from '@/pages/system/warning-rules';
+import ReportListPage from '@/pages/report/ReportListPage';
+import MenuPage from '@/pages/system/menus';
+import DownloadLogPage from '@/pages/system/download-logs';
 
 /**
  * 路由守卫组件 - 未登录自动跳转到登录页
@@ -45,6 +47,7 @@ export default function App() {
         <Route index element={<Navigate to="/home" replace />} />
         <Route path="home" element={<HomePage />} />
         <Route path="report-center" element={<ReportCenter />} />
+        <Route path="report-list/:reportCode" element={<ReportListPage />} />
         <Route path="analysis" element={<AnalysisPage />} />
         <Route path="warning-center" element={<WarningPage />} />
         <Route path="system/users" element={<UserPage />} />
@@ -52,6 +55,7 @@ export default function App() {
         <Route path="system/menus" element={<MenuPage />} />
         <Route path="system/reports" element={<ReportConfigPage />} />
         <Route path="system/warning-rules" element={<WarningRulesPage />} />
+        <Route path="system/download-logs" element={<DownloadLogPage />} />
       </Route>
 
       {/* 404 - 未匹配的路由 */}

@@ -30,11 +30,11 @@ import { WarningModule } from './warning/warning.module';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         type: 'postgres',
-        host: config.get('POSTGRES_HOST', 'localhost'),
-        port: config.get('POSTGRES_PORT', 5432),
-        username: config.get('POSTGRES_USER', 'postgres'),
-        password: config.get('POSTGRES_PASSWORD', 'postgres'),
-        database: config.get('POSTGRES_DATABASE', 'data_portal'),
+        host: config.get('PG_HOST', 'localhost'),
+        port: config.get('PG_PORT', 5432),
+        username: config.get('PG_USER', 'postgres'),
+        password: config.get('PG_PASSWORD', '123456'),
+        database: config.get('PG_DATABASE', 'data_portal'),
         entities: [__dirname + '/**/entities/*.entity{.ts,.js}'], // 自动扫描实体
         synchronize: false, // 生产环境关闭自动同步
         logging: false,

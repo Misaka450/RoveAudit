@@ -38,6 +38,6 @@ export class DownloadLog {
   @Column({ length: 50, nullable: true, comment: '下载IP地址' })
   ip: string;
 
-  @CreateDateColumn({ name: 'download_time', comment: '下载时间' })
+  @CreateDateColumn({ name: 'download_time', type: 'timestamp', comment: '下载时间' })
   downloadTime: Date;
 }

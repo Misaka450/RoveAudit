@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Res, Req, UnauthorizedException } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Query, Param, Res, Req, UnauthorizedException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { JwtService } from '@nestjs/jwt';
 import { Response } from 'express';
@@ -42,7 +42,7 @@ export class DownloadController {
    * 下载 Excel 文件
    */
   @Get('excel')
-  @Public() // 标记为公开接口，手动验证 token
+  @Public()
   @ApiOperation({ summary: '下载 Excel 文件' })
   @ApiQuery({ name: 'reportCode', description: '清单编码' })
   async downloadExcel(
@@ -50,27 +50,26 @@ export class DownloadController {
     @Req() req: any,
     @Res() res: Response,
   ) {
-    const { reportCode, token, ...queryParams } = params;
+    const { reportCode, token, filters, startDate, endDate, ...rest } = params;
     const user = this.extractUser(req);
+    const queryParams: Record<string, any> = { ...rest };
+    if (startDate) queryParams.startDate = startDate;
+    if (endDate) queryParams.endDate = endDate;
+    if (filters) {
+      try { Object.assign(queryParams, JSON.parse(filters)); } catch {}
+    }
 
     const { buffer, fileName } = await this.downloadService.downloadExcel(
-      reportCode,
-      queryParams,
-      user.userId,
-      user.username,
+      reportCode, queryParams, user.userId, user.username,
     );
 
-    // 设置响应头，触发浏览器下载
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename=${encodeURIComponent(fileName)}`);
     res.send(buffer);
   }
 
-  /**
-   * 下载 CSV 文件
-   */
   @Get('csv')
-  @Public() // 标记为公开接口，手动验证 token
+  @Public()
   @ApiOperation({ summary: '下载 CSV 文件' })
   @ApiQuery({ name: 'reportCode', description: '清单编码' })
   async downloadCsv(
@@ -78,18 +77,35 @@ export class DownloadController {
     @Req() req: any,
     @Res() res: Response,
   ) {
-    const { reportCode, token, ...queryParams } = params;
+    const { reportCode, token, filters, startDate, endDate, ...rest } = params;
     const user = this.extractUser(req);
+    const queryParams: Record<string, any> = { ...rest };
+    if (startDate) queryParams.startDate = startDate;
+    if (endDate) queryParams.endDate = endDate;
+    if (filters) {
+      try { Object.assign(queryParams, JSON.parse(filters)); } catch {}
+    }
 
     const { buffer, fileName } = await this.downloadService.downloadCsv(
-      reportCode,
-      queryParams,
-      user.userId,
-      user.username,
+      reportCode, queryParams, user.userId, user.username,
     );
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename=${encodeURIComponent(fileName)}`);
     res.send(buffer);
+  }
+
+  /** 查询下载日志 */
+  @Get('logs')
+  @ApiOperation({ summary: '查询下载日志' })
+  async getLogs(@Query('keyword') keyword?: string) {
+    return this.downloadService.findAll(keyword);
+  }
+
+  /** 删除下载日志 */
+  @Delete('logs/:id')
+  @ApiOperation({ summary: '删除下载日志' })
+  async removeLog(@Param('id') id: number) {
+    return this.downloadService.remove(id);
   }
 }

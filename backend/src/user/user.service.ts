@@ -105,8 +105,53 @@ export class UserService {
   }
 
   /**
-   * 删除用户（软删除，改为禁用状态）
+   * 批量导入用户
    */
+   async batchImport(data: any[]) {
+     const results: any = { success: 0, failed: 0, errors: [] };
+     for (const row of data) {
+       try {
+         if (!row.username || !row.realName || !row.password) {
+           results.failed++;
+           results.errors.push(`${row.username || '(空账号)'}: 缺少必填字段（账号、姓名、密码）`);
+           continue;
+         }
+         const exist = await this.userRepository.findOne({ where: { username: row.username } });
+         if (exist) {
+           results.failed++;
+           results.errors.push(`${row.username}: 账号已存在`);
+           continue;
+         }
+         const hashedPassword = await bcrypt.hash(String(row.password), 10);
+         const user = this.userRepository.create({
+           username: row.username,
+           realName: row.realName,
+           department: row.department || '',
+           phone: row.phone || '',
+           password: hashedPassword,
+           status: 1,
+         });
+         // 按角色名匹配
+         if (row.roleNames) {
+           const roleNames = String(row.roleNames).split(/[,，、\s]+/).filter(Boolean);
+           if (roleNames.length) {
+             const matchedRoles = await this.roleRepository.find({
+               where: roleNames.map((name: string) => ({ roleName: name })),
+             });
+             if (matchedRoles.length) user.roles = matchedRoles;
+           }
+         }
+         await this.userRepository.save(user);
+         results.success++;
+       } catch (e: any) {
+         results.failed++;
+         results.errors.push(`${row.username || '(未知)'}: ${e.message}`);
+       }
+     }
+     return results;
+   }
+
+   /** 删除用户（软删除，改为禁用状态） */
   async remove(id: number) {
     const user = await this.findOne(id);
     user.status = 0;

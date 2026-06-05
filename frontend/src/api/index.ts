@@ -1,4 +1,5 @@
 import request from '@/utils/request';
+import { message } from 'antd';
 import type { LoginResponse, PageResult, ReportConfig } from '@/types';
 
 /**
@@ -26,6 +27,10 @@ export const userApi = {
     request.put(`/users/${id}/reset-password`, { password }),
   /** 删除用户 */
   remove: (id: number) => request.delete(`/users/${id}`),
+  /** 批量导入 */
+  batchImport: (data: any) => request.post('/users/batch-import', data),
+  /** 获取导入模板 */
+  template: (): Promise<any[]> => request.get('/users/template'),
 };
 
 /**
@@ -116,29 +121,77 @@ export const warningApi = {
  * 下载 API
  */
 export const downloadApi = {
-  /** 下载 Excel */
-  excel: (reportCode: string, params: any = {}) => {
-    const token = localStorage.getItem('token');
-    // 过滤掉空值，避免 URL 中出现 "undefined" 或 "null"
-    const cleanParams: Record<string, string> = { reportCode };
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
-        cleanParams[key] = String(value);
-      }
-    });
-    const query = new URLSearchParams(cleanParams).toString();
-    window.open(`/api/download/excel?${query}&token=${token}`, '_blank');
-  },
-  /** 下载 CSV */
-  csv: (reportCode: string, params: any = {}) => {
+  /** 下载 Excel（Blob 方式，支持筛选参数） */
+  excel: async (reportCode: string, params: any = {}) => {
     const token = localStorage.getItem('token');
     const cleanParams: Record<string, string> = { reportCode };
+    const filters: Record<string, string> = {};
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== '') {
-        cleanParams[key] = String(value);
+        if (key === 'startDate' || key === 'endDate') {
+          cleanParams[key] = String(value);
+        } else {
+          filters[key] = String(value);
+        }
       }
     });
+    if (Object.keys(filters).length > 0) {
+      cleanParams.filters = JSON.stringify(filters);
+    }
     const query = new URLSearchParams(cleanParams).toString();
-    window.open(`/api/download/csv?${query}&token=${token}`, '_blank');
+    const resp = await fetch(`/api/download/excel?${query}`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    if (!resp.ok) { message.error('下载失败'); return; }
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = resp.headers.get('content-disposition')?.match(/filename=(.+)/)?.[1] || `${reportCode}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
+    message.success('下载完成');
   },
+  /** 下载 CSV（Blob 方式，支持筛选参数） */
+  csv: async (reportCode: string, params: any = {}) => {
+    const token = localStorage.getItem('token');
+    const cleanParams: Record<string, string> = { reportCode };
+    const filters: Record<string, string> = {};
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        if (key === 'startDate' || key === 'endDate') {
+          cleanParams[key] = String(value);
+        } else {
+          filters[key] = String(value);
+        }
+      }
+    });
+    if (Object.keys(filters).length > 0) {
+      cleanParams.filters = JSON.stringify(filters);
+    }
+    const query = new URLSearchParams(cleanParams).toString();
+    const resp = await fetch(`/api/download/csv?${query}`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    if (!resp.ok) { message.error('下载失败'); return; }
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = resp.headers.get('content-disposition')?.match(/filename=(.+)/)?.[1] || `${reportCode}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    message.success('下载完成');
+  },
+};
+
+/**
+ * 下载日志 API
+ */
+export const downloadLogApi = {
+  /** 获取下载日志列表 */
+  list: (keyword?: string): Promise<any[]> =>
+    request.get('/download/logs', { params: { keyword } }),
+  /** 删除下载日志 */
+  remove: (id: number) => request.delete(`/download/logs/${id}`),
 };
