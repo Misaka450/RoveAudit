@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   Card, Table, Button, Space, Input, DatePicker, Tag, message, Tooltip,
   Select, Dropdown,
@@ -19,11 +19,11 @@ interface ColumnFilter {
   key: string;
   type: 'text' | 'select' | 'date';
   label: string;
-  options?: { value: string; label: string }[]; // select 类型用
+  options?: { value: string; label: string }[];
 }
 
 /**
- * 通用清单数据页 - 每列可筛选
+ * 通用清单数据页 - 每列可筛选 + 下载
  */
 export default function ReportListPage() {
   const { reportCode } = useParams<{ reportCode: string }>();
@@ -47,25 +47,20 @@ export default function ReportListPage() {
     }).catch(() => {});
   }, [reportCode]);
 
-  // 从数据中提取列筛选配置（枚举列 → select，其他 → text）
+  // 从数据中提取列筛选配置
   const buildColumnFilters = useCallback((cols: string[], sampleData: any[]): ColumnFilter[] => {
     if (!sampleData.length) return [];
     return cols.map((key) => {
-      // 日期列
       if (key.includes('_date') || key.includes('date')) {
         return { key, type: 'date' as const, label: key };
       }
-      // 枚举列：唯一值少于 10 个的用 select
       const uniqueValues = [...new Set(sampleData.map((row) => row[key]))].filter((v) => v != null);
       if (uniqueValues.length > 0 && uniqueValues.length <= 10) {
         return {
-          key,
-          type: 'select' as const,
-          label: key,
+          key, type: 'select' as const, label: key,
           options: uniqueValues.map((v) => ({ value: String(v), label: String(v) })),
         };
       }
-      // 默认文本搜索
       return { key, type: 'text' as const, label: key };
     });
   }, []);
@@ -86,51 +81,56 @@ export default function ReportListPage() {
 
       if (result.list.length > 0) {
         const cols = Object.keys(result.list[0]);
-        const tableCols = cols.map((key) => ({
-          title: key,
-          dataIndex: key,
-          key,
-          width: 150,
-          ellipsis: true,
-          filterIcon: <FilterOutlined />,
-          filterDropdown: ({ confirm }: { confirm: () => void }) => (
-            <ColumnFilterDropdown
-              column={key}
-              type={columnFilters.find((f) => f.key === key)?.type || 'text'}
-              options={columnFilters.find((f) => f.key === key)?.options}
-              value={activeFilters[key]}
-              onApply={(val: any) => {
-                const newFilters = { ...activeFilters };
-                if (val === '' || val === null || val === undefined) {
-                  delete newFilters[key];
-                } else {
-                  newFilters[key] = val;
-                }
-                setActiveFilters(newFilters);
-                setPage(1);
-                confirm();
-              }}
-              onClear={() => {
-                const newFilters = { ...activeFilters };
-                delete newFilters[key];
-                setActiveFilters(newFilters);
-                setPage(1);
-                confirm();
-              }}
-            />
-          ),
-          render: (val: any) => {
-            if (val === null || val === undefined) return '-';
-            if (typeof val === 'object') return JSON.stringify(val);
-            return String(val);
-          },
-        }));
-        setColumns(tableCols);
+        const filters = columnFilters.length > 0 ? columnFilters : buildColumnFilters(cols, result.list);
+        if (columnFilters.length === 0) setColumnFilters(filters);
 
-        // 构建筛选配置（仅首次）
-        if (columnFilters.length === 0) {
-          setColumnFilters(buildColumnFilters(cols, result.list));
-        }
+        const tableCols = cols.map((key) => {
+          const filterType = filters.find((f) => f.key === key)?.type || 'text';
+          const filterOptions = filters.find((f) => f.key === key)?.options;
+          const isFiltered = activeFilters[key] !== undefined && activeFilters[key] !== '';
+
+          return {
+            title: key,
+            dataIndex: key,
+            key,
+            width: 150,
+            ellipsis: true,
+            filterIcon: <FilterOutlined style={{ color: isFiltered ? '#1677ff' : undefined }} />,
+            filteredValue: isFiltered ? [activeFilters[key]] : null,
+            filterDropdown: ({ confirm }: { confirm: () => void }) => (
+              <ColumnFilterDropdown
+                column={key}
+                type={filterType}
+                options={filterOptions}
+                value={activeFilters[key]}
+                onApply={(val: any) => {
+                  const newFilters = { ...activeFilters };
+                  if (val === '' || val === null || val === undefined) {
+                    delete newFilters[key];
+                  } else {
+                    newFilters[key] = val;
+                  }
+                  setActiveFilters(newFilters);
+                  setPage(1);
+                  confirm();
+                }}
+                onClear={() => {
+                  const newFilters = { ...activeFilters };
+                  delete newFilters[key];
+                  setActiveFilters(newFilters);
+                  setPage(1);
+                  confirm();
+                }}
+              />
+            ),
+            render: (val: any) => {
+              if (val === null || val === undefined) return '-';
+              if (typeof val === 'object') return JSON.stringify(val);
+              return String(val);
+            },
+          };
+        });
+        setColumns(tableCols);
       } else {
         setColumns([]);
       }
@@ -209,12 +209,7 @@ export default function ReportListPage() {
 
 // ==================== 列筛选下拉组件 ====================
 function ColumnFilterDropdown({
-  column,
-  type,
-  options,
-  value,
-  onApply,
-  onClear,
+  column, type, options, value, onApply, onClear,
 }: {
   column: string;
   type: 'text' | 'select' | 'date';
