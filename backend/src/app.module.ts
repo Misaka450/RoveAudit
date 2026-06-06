@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -7,6 +7,8 @@ import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { CacheService } from './common/cache.service';
 import { NotificationService } from './common/notification.service';
+import { AuditLogModule } from './common/audit-log.module';
+import { AuditMiddleware } from './common/middleware/audit.middleware';
 // 业务模块
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
@@ -63,6 +65,7 @@ import { WarningModule } from './warning/warning.module';
     DataQueryModule,
     DownloadModule,
     WarningModule,
+    AuditLogModule,
   ],
   controllers: [AppController],
   providers: [
@@ -73,4 +76,8 @@ import { WarningModule } from './warning/warning.module';
     { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(AuditMiddleware).forRoutes('*');
+  }
+}

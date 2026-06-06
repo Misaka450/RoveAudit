@@ -19,6 +19,8 @@ const MenuPage = lazy(() => import('@/pages/system/menus'));
 const ReportConfigPage = lazy(() => import('@/pages/system/reports'));
 const WarningRulesPage = lazy(() => import('@/pages/system/warning-rules'));
 const DownloadLogPage = lazy(() => import('@/pages/system/download-logs'));
+const AuditLogPage = lazy(() => import('@/pages/system/audit-logs'));
+const WarningResultsPage = lazy(() => import('@/pages/warning/results'));
 
 /** 页面加载中的 fallback 组件 */
 function PageLoading() {
@@ -80,6 +82,8 @@ export default function App() {
         <Route path="system/reports" element={<LazyPage Component={ReportConfigPage} />} />
         <Route path="system/warning-rules" element={<LazyPage Component={WarningRulesPage} />} />
         <Route path="system/download-logs" element={<LazyPage Component={DownloadLogPage} />} />
+        <Route path="system/audit-logs" element={<LazyPage Component={AuditLogPage} />} />
+        <Route path="warning-results" element={<LazyPage Component={WarningResultsPage} />} />
       </Route>
 
       {/* 404 - 未匹配的路由 */}

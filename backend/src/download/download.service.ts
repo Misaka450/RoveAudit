@@ -186,13 +186,13 @@ export class DownloadService {
     const topReports = await this.downloadLogRepository
       .createQueryBuilder('log')
       .select('log.report_name', 'reportName')
-      .addSelect('COUNT(*)', 'downloadCount')
+      .addSelect('COUNT(*)', 'count')
       .groupBy('log.report_name')
-      .orderBy('downloadCount', 'DESC')
+      .orderBy('count', 'DESC')
       .limit(5)
       .getRawMany();
 
-    return { todayCount, monthCount, topReports };
+    return { todayCount, monthCount, topReports: topReports.map(r => ({ reportName: r.reportName, downloadCount: parseInt(r.count, 10) })) };
   }
 
   /** 保存下载日志 */
