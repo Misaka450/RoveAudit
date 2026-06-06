@@ -221,3 +221,16 @@ export const downloadLogApi = {
   /** 删除下载日志 */
   remove: (id: number) => request.delete(`/download/logs/${id}`),
 };
+
+/**
+ * 审计日志 API
+ */
+export const auditLogApi = {
+  /** 查询审计日志列表 */
+  list: (keyword?: string, page?: number, pageSize?: number): Promise<{ list: any[]; total: number }> =>
+    request.get('/audit-log', { params: { keyword, page, pageSize } }),
+  /** 删除审计日志 */
+  remove: (id: number) => request.delete(`/audit-log/${id}`),
+  /** 清理指定天数前的日志 */
+  clean: (days: number) => request.delete('/audit-log', { params: { days } }),
+};
