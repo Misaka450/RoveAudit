@@ -2,6 +2,46 @@ import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { AuditLogService } from '../audit-log.service';
 
+/** 需要脱敏的敏感字段名列表 */
+const SENSITIVE_FIELDS = new Set(['token', 'password', 'secret', 'authorization']);
+
+/**
+ * 递归脱敏函数 - 深度遍历对象，移除所有敏感字段
+ */
+function deepSanitize(value: any, depth = 0): any {
+  if (depth > 10) return '[深度过大]'; // 防止循环引用
+  if (value == null) return value;
+  if (typeof value !== 'object') return value;
+  if (Array.isArray(value)) {
+    return value.map((item) => deepSanitize(item, depth + 1));
+  }
+  const sanitized: Record<string, any> = {};
+  for (const [key, val] of Object.entries(value)) {
+    if (SENSITIVE_FIELDS.has(key.toLowerCase())) {
+      sanitized[key] = '***';
+    } else {
+      sanitized[key] = deepSanitize(val, depth + 1);
+    }
+  }
+  return sanitized;
+}
+
+/** 路径到模块名的映射表 */
+const MODULE_MAP: Record<string, string> = {
+  '/auth': '认证管理',
+  '/users': '用户管理',
+  '/roles': '角色管理',
+  '/menus': '菜单管理',
+  '/reports': '清单管理',
+  '/download': '下载管理',
+  '/warnings': '异常检测',
+  '/data-query': '数据查询',
+  '/audit-log': '审计日志',
+};
+
+/** 预排序的模块路径（按长度降序），避免每次查找都重新排序 */
+const MODULE_KEYS = Object.keys(MODULE_MAP).sort((a, b) => b.length - a.length);
+
 /**
  * 审计日志中间件 - 自动记录所有 API 请求
  * 排除健康检查、Swagger 文档等噪音路径
@@ -34,7 +74,6 @@ export class AuditMiddleware implements NestMiddleware {
       const shouldLog =
         req.method !== 'GET' || // 所有写操作
         req.path.includes('/download') || // 下载操作
-        req.path.includes('/login') || // 登录
         res.statusCode >= 400; // 错误请求
 
       if (shouldLog) {
@@ -57,25 +96,22 @@ export class AuditMiddleware implements NestMiddleware {
   }
 
   private getModule(path: string): string {
-    if (path.includes('/auth')) return '认证管理';
-    if (path.includes('/users')) return '用户管理';
-    if (path.includes('/roles')) return '角色管理';
-    if (path.includes('/menus')) return '菜单管理';
-    if (path.includes('/reports')) return '清单管理';
-    if (path.includes('/download')) return '下载管理';
-    if (path.includes('/warnings')) return '异常检测';
-    if (path.includes('/data-query')) return '数据查询';
-    if (path.includes('/audit-log')) return '审计日志';
-    return '其他';
+    const matchedKey = MODULE_KEYS.find((key) => path.includes(key));
+    return matchedKey ? MODULE_MAP[matchedKey] : '其他';
   }
 
   private sanitizeParams(req: Request): string {
-    const { token, password, ...safe } = req.body || {};
-    const sanitized = { ...safe };
-    if (req.query && Object.keys(req.query).length > 0) {
-      const { token: t, ...safeQuery } = req.query as any;
-      sanitized.query = safeQuery;
+    // 对 body、query、params 做递归脱敏
+    const sanitized: Record<string, any> = {};
+
+    for (const key of ['body', 'query', 'params'] as const) {
+      if (req[key] && typeof req[key] === 'object' && Object.keys(req[key]).length > 0) {
+        sanitized[key] = deepSanitize(req[key]);
+      }
     }
+
+    if (Object.keys(sanitized).length === 0) return '';
+
     try {
       return JSON.stringify(sanitized).slice(0, 2000);
     } catch {

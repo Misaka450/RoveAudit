@@ -44,8 +44,8 @@ function LazyPage({ Component }: { Component: React.LazyExoticComponent<any> }) 
  * 路由守卫组件 - 未登录自动跳转到登录页
  */
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const token = useAuthStore((s) => s.token);
-  if (!token) {
+  const userInfo = useAuthStore((s) => s.userInfo);
+  if (!userInfo) {
     return <Navigate to="/login" replace />;
   }
   return <>{children}</>;

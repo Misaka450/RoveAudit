@@ -27,7 +27,7 @@ export default function AuditLogPage() {
 
   useEffect(() => { loadLogs(); }, [page, pageSize]);
 
-  const handleSearch = () => { setPage(1); loadLogs(); };
+  const handleSearch = () => { setPage(1); };
 
   const handleDelete = async (id: number) => {
     try {
