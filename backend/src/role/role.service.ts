@@ -80,11 +80,13 @@ export class RoleService {
     return savedRole;
   }
 
-  /**
-   * 删除角色
-   */
+  /** 删除角色（软删除，改为禁用状态） */
   async remove(id: number) {
     const role = await this.findOne(id);
-    return this.roleRepository.remove(role);
+    role.status = 0;
+    await this.roleRepository.save(role);
+    // 清除所有用户的权限缓存
+    this.cacheService.delByPrefix('user:permissions:');
+    return { success: true, message: '角色已删除（软删除）' };
   }
 }

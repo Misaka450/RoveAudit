@@ -36,7 +36,12 @@ export class DataQueryService {
         if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(key)) {
           continue;
         }
-        const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
+        // 校验参数值：过滤 SQL 注入特征（仅限字符串类型）
+        if (typeof value === 'string' && /;\s*(DROP|DELETE|UPDATE|INSERT|ALTER|CREATE|EXEC|UNION\s+SELECT)/i.test(value)) {
+          throw new BadRequestException(`参数 "${key}" 包含非法内容`);
+        }
+        const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`\\{\\{${escapedKey}\\}\\}`, 'g');
         // 使用 ? 占位符替代直接嵌入值
         if (regex.test(sql)) {
           sql = sql.replace(regex, '?');

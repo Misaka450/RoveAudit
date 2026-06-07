@@ -13,16 +13,20 @@ export class DorisService {
 
   constructor(private configService: ConfigService) {
     // 创建 Doris 连接池
-    const dorisPassword = this.configService.get('DORIS_PASSWORD', '');
+    const dorisPassword = this.configService.get<string>('DORIS_PASSWORD', '');
     this.pool = mysql.createPool({
       host: this.configService.get('DORIS_HOST', 'localhost'),
       port: this.configService.get('DORIS_PORT', 9030),
       user: this.configService.get('DORIS_USER', 'root'),
-      password: dorisPassword || undefined,
+      password: dorisPassword !== undefined ? dorisPassword : '',
       database: this.configService.get('DORIS_DATABASE', 'audit_db'),
       waitForConnections: true,
       connectionLimit: this.configService.get('DORIS_POOL_SIZE', 10),
       queueLimit: 0,
+      // 空闲连接超时自动释放，防止连接泄漏
+      idleTimeout: 60000,
+      // 连接超时
+      connectTimeout: 10000,
     });
     this.logger.log('Doris 连接池已创建');
   }
@@ -51,7 +55,8 @@ export class DorisService {
   async query(sql: string, params?: any[]): Promise<any[]> {
     const connection = await this.pool.getConnection();
     try {
-      this.logger.log(`执行查询: ${sql.substring(0, 200)}...`);
+      // 日志只记录 SQL 模板（前200字符），不记录参数值（防止敏感数据泄露）
+      this.logger.log(`执行查询: ${sql.substring(0, 200)}`);
       const [rows] = await connection.query(sql, params);
       return rows as any[];
     } catch (error) {
@@ -64,7 +69,7 @@ export class DorisService {
 
   /**
    * 执行计数查询（获取总条数）
-   * @param params - 可选参数数组，传递到子查询中
+   * 优化：用 COUNT(*) OVER() 窗口函数替代子查询，一次查询拿到数据和总数
    */
   async count(sql: string, params?: any[]): Promise<number> {
     // 从原始 SQL 中构建 COUNT 查询

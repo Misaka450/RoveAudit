@@ -113,6 +113,7 @@ export class AuditMiddleware implements NestMiddleware {
     if (Object.keys(sanitized).length === 0) return '';
 
     try {
+      // 截断到 2000 字符，防止超长请求体撑爆日志表
       return JSON.stringify(sanitized).slice(0, 2000);
     } catch {
       return '';

@@ -67,12 +67,11 @@ export class WarningService {
     return this.findOne(id);
   }
 
-  /**
-   * 删除异常规则
-   */
+  /** 删除异常规则（软删除，改为禁用状态） */
   async remove(id: number) {
     const rule = await this.findOne(id);
-    return this.warningRuleRepository.remove(rule);
+    rule.enableFlag = 0;
+    return this.warningRuleRepository.save(rule);
   }
 
   /**
@@ -207,20 +206,17 @@ export class WarningService {
   }
 
   /**
-   * 获取异常类型占比数据
+   * 获取异常类型占比数据（使用 SQL GROUP BY 统计，避免全表加载到内存）
    */
   async getTypeDistribution() {
-    const results = await this.warningResultRepository.find({
-      order: { createTime: 'DESC' },
-      take: 1000,
-    });
+    const results = await this.warningResultRepository
+      .createQueryBuilder('wr')
+      .select('wr.ruleType', 'name')
+      .addSelect('SUM(wr.resultCount)', 'value')
+      .groupBy('wr.ruleType')
+      .orderBy('value', 'DESC')
+      .getRawMany();
 
-    // 按规则类型分组统计异常数量
-    const typeMap = new Map<string, number>();
-    for (const r of results) {
-      typeMap.set(r.ruleType, (typeMap.get(r.ruleType) || 0) + r.resultCount);
-    }
-
-    return Array.from(typeMap.entries()).map(([name, value]) => ({ name, value }));
+    return results.map((r) => ({ name: r.name, value: Number(r.value) }));
   }
 }

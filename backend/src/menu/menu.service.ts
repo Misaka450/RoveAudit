@@ -66,13 +66,28 @@ export class MenuService {
 
   /**
    * 递归构建树形结构（用于前端菜单渲染）
+   * 优化：先构建 parentId → children 的 Map，复杂度 O(n)
    */
   private buildTree(menus: Menu[], parentId: number): any[] {
-    return menus
-      .filter((m) => m.parentId === parentId)
-      .map((menu) => ({
+    // 构建 parentId → 子菜单数组的映射（仅遍历一次）
+    const childrenMap = new Map<number, Menu[]>();
+    for (const m of menus) {
+      const pid = m.parentId;
+      if (!childrenMap.has(pid)) {
+        childrenMap.set(pid, []);
+      }
+      childrenMap.get(pid)!.push(m);
+    }
+
+    // 递归组装树
+    const build = (pid: number): any[] => {
+      const children = childrenMap.get(pid) || [];
+      return children.map((menu) => ({
         ...menu,
-        children: this.buildTree(menus, menu.id),
+        children: build(menu.id),
       }));
+    };
+
+    return build(parentId);
   }
 }

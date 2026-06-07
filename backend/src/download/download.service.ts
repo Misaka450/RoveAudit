@@ -14,8 +14,11 @@ import { DownloadLog } from './entities/download-log.entity';
  */
 @Injectable()
 export class DownloadService {
-  // 每次分批查询的行数，避免一次加载过多数据到内存
+  /** 每次分批查询的行数，避免一次加载过多数据到内存 */
   private readonly BATCH_SIZE = 5000;
+
+  /** 最大下载条数限制 */
+  private readonly MAX_DOWNLOAD_ROWS = 100000;
 
   constructor(
     private dataQueryService: DataQueryService,
@@ -26,7 +29,7 @@ export class DownloadService {
   ) {}
 
   /**
-   * 获取下载元数据 - 仅加载第 1 页第一行以获取结构，不加载全部数据到内存
+   * 获取下载元数据 + 总条数（合并为一次查询，避免重复查询）
    */
   private async fetchMetadata(
     reportCode: string,
@@ -42,13 +45,16 @@ export class DownloadService {
       throw new BadRequestException('该清单不允许下载');
     }
 
-    // 先获取第一页的 1 条数据，同时获得总条数和结构
+    // 获取第一页数据（仅 1 条）用于提取列结构
     const firstPage = await this.dataQueryService.queryByReportCode(
       reportCode, params, 1, 1,
     );
     const total = firstPage.total;
     if (total === 0) {
       throw new BadRequestException('没有可下载的数据');
+    }
+    if (total > this.MAX_DOWNLOAD_ROWS) {
+      throw new BadRequestException(`数据量过大（${total} 条），请缩小查询范围或分批下载（最多 ${this.MAX_DOWNLOAD_ROWS} 条）`);
     }
 
     // 获取字段配置，如果有配置则使用中文列名
@@ -214,8 +220,9 @@ export class DownloadService {
     });
   }
 
-  /** 查询下载日志（支持分页） */
+  /** 查询下载日志（支持分页，默认每页20条，最多100条） */
   async findAll(keyword?: string, page?: number, pageSize?: number) {
+    const effectivePageSize = Math.min(pageSize || 20, 100);
     const where = keyword
       ? [
           { username: Like(`%${keyword}%`) },
@@ -224,21 +231,13 @@ export class DownloadService {
         ]
       : {};
 
-    if (page && pageSize) {
-      const skip = (page - 1) * pageSize;
-      const [list, total] = await this.downloadLogRepository.findAndCount({
-        where,
-        order: { downloadTime: 'DESC' },
-        skip,
-        take: pageSize,
-      });
-      return { list, total };
-    }
-
-    return this.downloadLogRepository.find({
+    const [list, total] = await this.downloadLogRepository.findAndCount({
       where,
       order: { downloadTime: 'DESC' },
+      skip: ((page || 1) - 1) * effectivePageSize,
+      take: effectivePageSize,
     });
+    return { list, total, page: page || 1, pageSize: effectivePageSize };
   }
 
   /** 删除下载日志 */

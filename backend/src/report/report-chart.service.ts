@@ -41,8 +41,8 @@ export class ReportChartService {
     return this.chartRepository.findOne({ where: { id } });
   }
 
-  /** 删除图表配置 */
+  /** 删除图表配置（软删除，改为禁用状态） */
   async remove(id: number) {
-    return this.chartRepository.delete(id);
+    return this.chartRepository.update(id, { status: 0 });
   }
 }

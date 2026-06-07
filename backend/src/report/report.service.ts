@@ -109,11 +109,12 @@ export class ReportService {
   }
 
   /**
-   * 删除清单
+   * 删除清单（软删除，改为禁用状态）
    */
   async remove(id: number) {
     const report = await this.findOne(id);
-    const result = await this.reportRepository.remove(report);
+    report.status = 0;
+    const result = await this.reportRepository.save(report);
     this.clearCache();
     return result;
   }

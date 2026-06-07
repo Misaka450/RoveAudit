@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Form, Input, Button, Card, Typography, message } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
@@ -8,12 +8,20 @@ import { useAuthStore } from '@/store/authStore';
 const { Title, Text } = Typography;
 
 /**
- * 登录页面
+ * 登录页面 - 已登录用户自动跳转首页
  */
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const setAuth = useAuthStore((s) => s.setAuth);
+  const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
+
+  // 已登录则自动跳转
+  useEffect(() => {
+    if (isLoggedIn()) {
+      navigate('/home', { replace: true });
+    }
+  }, [isLoggedIn, navigate]);
 
   const handleLogin = async (values: { username: string; password: string }) => {
     setLoading(true);

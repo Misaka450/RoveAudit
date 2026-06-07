@@ -197,21 +197,10 @@ CREATE INDEX IF NOT EXISTS idx_download_log_user_id ON sys_download_log(user_id)
 CREATE INDEX IF NOT EXISTS idx_download_log_download_time ON sys_download_log(download_time);
 
 -- ============================================
--- 14. 操作日志表（sys_operation_log）
+-- 14. 操作日志表（已废弃，由 sys_audit_log 替代）
 -- ============================================
-CREATE TABLE IF NOT EXISTS sys_operation_log (
-  id SERIAL PRIMARY KEY,
-  user_id INT NOT NULL,
-  username VARCHAR(50) NOT NULL,
-  operation VARCHAR(100) NOT NULL,
-  method VARCHAR(10) DEFAULT NULL,
-  url VARCHAR(500) DEFAULT NULL,
-  params TEXT DEFAULT NULL,
-  ip VARCHAR(50) DEFAULT NULL,
-  create_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-CREATE INDEX IF NOT EXISTS idx_operation_log_user_id ON sys_operation_log(user_id);
-CREATE INDEX IF NOT EXISTS idx_operation_log_create_time ON sys_operation_log(create_time);
+-- ⚠️ sys_operation_log 已删除，代码中使用 sys_audit_log（audit-log.entity.ts）
+-- 如需保留历史数据，请手动迁移后再删除此段
 
 -- ============================================
 -- 15. 审计日志表（sys_audit_log）
@@ -300,6 +289,14 @@ INSERT INTO sys_report (report_name, report_code, category, description, sql_con
 ('员工维度', 'staff_dim', '用户类', '员工信息维度表', 'SELECT staff_id, staff_name, unit_id, role, phone, status, hire_date FROM audit_db.dim_staff WHERE 1=1', 1, 0, 10),
 ('单位维度', 'unit_dim', '用户类', '组织架构维度表', 'SELECT unit_id, unit_name, unit_type, parent_id, city, level, status FROM audit_db.dim_unit WHERE 1=1', 1, 0, 11)
 ON CONFLICT (report_code) DO NOTHING;
+
+-- ============================================
+-- 补充索引（性能优化）
+-- ============================================
+CREATE INDEX IF NOT EXISTS idx_download_log_report_id ON sys_download_log(report_id);
+CREATE INDEX IF NOT EXISTS idx_audit_log_action ON sys_audit_log(action);
+CREATE INDEX IF NOT EXISTS idx_user_status ON sys_user(status);
+CREATE INDEX IF NOT EXISTS idx_warning_result_rule_id_create_time ON sys_warning_result(rule_id, create_time);
 
 -- ============================================
 -- 完成！

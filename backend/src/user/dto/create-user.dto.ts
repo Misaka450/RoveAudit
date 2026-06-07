@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, MinLength, Matches } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 /**
@@ -10,9 +10,13 @@ export class CreateUserDto {
   @IsNotEmpty({ message: '账号不能为空' })
   username: string;
 
-  @ApiProperty({ description: '密码' })
+  @ApiProperty({ description: '密码（至少8位，需包含大小写字母和数字）' })
   @IsString()
   @IsNotEmpty({ message: '密码不能为空' })
+  @MinLength(8, { message: '密码长度不能少于8位' })
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/, {
+    message: '密码必须包含大写字母、小写字母和数字',
+  })
   password: string;
 
   @ApiProperty({ description: '真实姓名' })

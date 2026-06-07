@@ -21,10 +21,12 @@ export class UserService {
     private cacheService: CacheService,
   ) {}
 
-  /**
-   * 查询用户列表（支持按账号、姓名模糊搜索，支持分页）
-   */
+  /** 查询用户列表（支持按账号、姓名模糊搜索，支持分页） */
   async findAll(keyword?: string, page?: number, pageSize?: number) {
+    const DEFAULT_PAGE_SIZE = 50;
+    const MAX_PAGE_SIZE = 200;
+    const effectivePageSize = pageSize ? Math.min(pageSize, MAX_PAGE_SIZE) : (page ? DEFAULT_PAGE_SIZE : undefined);
+
     const where = keyword
       ? [
           { username: Like(`%${keyword}%`) },
@@ -32,22 +34,24 @@ export class UserService {
         ]
       : {};
 
-    if (page && pageSize) {
-      const skip = (page - 1) * pageSize;
+    if (page && effectivePageSize) {
+      const skip = (page - 1) * effectivePageSize;
       const [list, total] = await this.userRepository.findAndCount({
         where,
         relations: ['roles'],
         order: { createTime: 'DESC' },
         skip,
-        take: pageSize,
+        take: effectivePageSize,
       });
       return { list, total };
     }
 
+    // 不分页时设置上限，防止返回过多数据
     return this.userRepository.find({
       where,
       relations: ['roles'],
       order: { createTime: 'DESC' },
+      take: MAX_PAGE_SIZE,
     });
   }
 
@@ -119,8 +123,16 @@ export class UserService {
 
   /**
    * 批量导入用户
-   */
+   /** 批量导入用户（限制最多 500 行） */
    async batchImport(data: any[]) {
+     const MAX_BATCH_IMPORT_ROWS = 500;
+     if (data.length > MAX_BATCH_IMPORT_ROWS) {
+       return {
+         success: 0,
+         failed: data.length,
+         errors: [`单次导入不能超过 ${MAX_BATCH_IMPORT_ROWS} 条，当前 ${data.length} 条`],
+       };
+     }
      const results: { success: number; failed: number; errors: string[] } = { success: 0, failed: 0, errors: [] };
      for (const row of data) {
        try {

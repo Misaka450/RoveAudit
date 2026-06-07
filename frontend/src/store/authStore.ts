@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { UserInfo } from '@/types';
+import request from '@/utils/request';
 
 /**
  * 认证状态管理 - 存储用户登录信息
@@ -24,7 +25,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ userInfo });
   },
 
-  logout: () => {
+  logout: async () => {
+    // 通知后端将 Token 加入黑名单
+    try {
+      await request.post('/auth/logout');
+    } catch {
+      // 网络错误时仍然清除本地状态
+    }
     localStorage.removeItem('userInfo');
     set({ userInfo: null });
   },

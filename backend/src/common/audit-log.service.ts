@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like } from 'typeorm';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { AuditLog } from './entities/audit-log.entity';
 
 @Injectable()
@@ -15,9 +16,10 @@ export class AuditLogService {
     return this.auditLogRepository.save(data);
   }
 
-  /** 查询日志列表（分页） */
+  /** 查询日志列表（分页，默认每页20条，最多100条） */
   async findAll(params: { keyword?: string; page?: number; pageSize?: number }) {
     const { keyword, page = 1, pageSize = 20 } = params;
+    const effectivePageSize = Math.min(pageSize, 100);
     const where: any[] = [];
     if (keyword) {
       where.push({ username: Like(`%${keyword}%`) });
@@ -27,11 +29,11 @@ export class AuditLogService {
     const [list, total] = await this.auditLogRepository.findAndCount({
       where: where.length > 0 ? where : undefined,
       order: { createTime: 'DESC' },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
+      skip: (page - 1) * effectivePageSize,
+      take: effectivePageSize,
     });
 
-    return { list, total, page, pageSize };
+    return { list, total, page, pageSize: effectivePageSize };
   }
 
   /** 删除单条日志 */
@@ -48,5 +50,16 @@ export class AuditLogService {
       .delete()
       .where('create_time < :date', { date })
       .execute();
+  }
+
+  /**
+   * 定时清理：每天凌晨 2 点清理 90 天前的审计日志
+   */
+  @Cron('0 2 * * *')
+  async scheduledCleanup() {
+    const deleted = await this.cleanBefore(90);
+    if (deleted.affected && deleted.affected > 0) {
+      console.log(`[AuditLog] 自动清理了 ${deleted.affected} 条过期审计日志`);
+    }
   }
 }

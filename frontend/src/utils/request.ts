@@ -3,13 +3,52 @@ import { message } from 'antd';
 import { navigate } from './navigationService';
 
 /**
- * Axios 请求封装 - 统一处理错误提示
+ * Axios 请求封装 - 统一处理错误提示、自动重试、Token 失效处理
  * Token 由后端通过 HttpOnly Cookie 自动携带，无需前端添加
  */
 const instance = axios.create({
   baseURL: '/api', // 后端 API 基础路径
   timeout: 30000,  // 请求超时时间：30秒
   withCredentials: true, // 允许跨域携带 Cookie
+});
+
+/** 最大重试次数 */
+const MAX_RETRIES = 2;
+/** 需要重试的状态码 */
+const RETRY_STATUS_CODES = new Set([408, 429, 500, 502, 503, 504]);
+
+/**
+ * 注册 axios-retry 自动重试（网络错误 + 特定状态码）
+ */
+instance.interceptors.response.use(undefined, async (error) => {
+  const config = error.config as any;
+  if (!config || !config.method) return Promise.reject(error);
+
+  // 仅对幂等请求重试（GET、DELETE、PUT）
+  const method = config.method.toUpperCase();
+  if (!['GET', 'DELETE', 'PUT'].includes(method)) {
+    return Promise.reject(error);
+  }
+
+  // 检查重试次数
+  config.__retryCount = config.__retryCount || 0;
+  if (config.__retryCount >= MAX_RETRIES) {
+    return Promise.reject(error);
+  }
+
+  // 只重试网络错误或特定状态码
+  const shouldRetry = !error.response || RETRY_STATUS_CODES.has(error.response.status);
+  if (!shouldRetry) {
+    return Promise.reject(error);
+  }
+
+  config.__retryCount += 1;
+
+  // 延迟重试（指数退避）
+  const delay = Math.pow(2, config.__retryCount) * 500;
+  await new Promise((resolve) => setTimeout(resolve, delay));
+
+  return instance(config);
 });
 
 // 请求拦截器：无需手动添加 Token，Cookie 自动携带
@@ -29,11 +68,16 @@ instance.interceptors.response.use(
     }
     return res.data; // 只返回 data 部分，方便调用方使用
   },
-  (error) => {
+  async (error) => {
     if (error.response) {
       const { status } = error.response;
       if (status === 401) {
-        // Token 过期，清除本地状态并跳转到登录页
+        // Token 失效 → 通知后端加入黑名单并清除本地状态
+        try {
+          await instance.post('/auth/logout');
+        } catch {
+          // 后端也返回 401 则忽略
+        }
         localStorage.removeItem('userInfo');
         navigate('/login');
         message.error('登录已过期，请重新登录');

@@ -3,6 +3,7 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { JwtService } from '@nestjs/jwt';
 import * as cookieParser from 'cookie-parser';
+import * as express from 'express';
 import { AppModule } from './app.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { PermissionGuard } from './common/guards/permission.guard';
@@ -27,6 +28,10 @@ async function bootstrap() {
 
   // 创建 NestJS 应用实例
   const app = await NestFactory.create(AppModule);
+
+  // 请求体大小限制（防止超大请求体攻击）
+  app.use(express.json({ limit: '1mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
   // 注册 cookie 解析中间件（用于 HttpOnly Cookie 方式传递 JWT）
   app.use(cookieParser());
@@ -61,10 +66,12 @@ async function bootstrap() {
   // 注册全局响应拦截器（统一成功响应格式）
   app.useGlobalInterceptors(new TransformInterceptor());
 
-  // 允许跨域（允许所有来源）
+  // 允许跨域（完全开放，便于内网访问）
   app.enableCors({
     origin: true,
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   });
 
   // 配置 Swagger API 文档

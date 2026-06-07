@@ -52,8 +52,9 @@ export class UserController {
     return this.userService.resetPassword(id, password);
   }
 
+  /** 批量导入用户（限制最多 500 行） */
   @Post('batch-import')
-  @ApiOperation({ summary: '批量导入用户（Excel）' })
+  @ApiOperation({ summary: '批量导入用户（Excel，最多500条）' })
   batchImport(@Body() data: any[]) {
     return this.userService.batchImport(data);
   }
