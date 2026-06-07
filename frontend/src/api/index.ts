@@ -209,11 +209,8 @@ export const downloadApi = {
  */
 export const downloadLogApi = {
   /** 获取下载日志列表 */
-  list: (keyword?: string, page?: number, pageSize?: number): Promise<any> =>
-    request.get('/download/logs', { params: { keyword, page, pageSize } }),
-  /** 获取下载统计（今日/本月下载量、热门排行） */
-  stats: (): Promise<{ todayCount: number; monthCount: number; topReports: { reportName: string; downloadCount: number }[] }> =>
-    request.get('/download/stats'),
+  list: (page?: number, pageSize?: number): Promise<any> =>
+    request.get('/download/logs', { params: { page, pageSize } }),
   /** 删除下载日志 */
   remove: (id: number) => request.delete(`/download/logs/${id}`),
 };

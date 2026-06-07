@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { WarningService } from './warning.service';
-import { CreateWarningRuleDto } from '../common/dto/create.dto';
+import { CreateWarningRuleDto } from './dto/create-warning-rule.dto';
 
 /**
  * 异常规则管理控制器

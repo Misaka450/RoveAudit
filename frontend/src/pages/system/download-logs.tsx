@@ -1,43 +1,36 @@
 import { useEffect, useState } from 'react';
-import { Card, Table, Button, Space, Input, Tag, message, Popconfirm } from 'antd';
-import { SearchOutlined, DeleteOutlined, ReloadOutlined, FileExcelOutlined, FileTextOutlined } from '@ant-design/icons';
+import { Card, Table, Button, Space, Tag, message, Popconfirm } from 'antd';
+import { ReloadOutlined, DeleteOutlined, FileExcelOutlined, FileTextOutlined } from '@ant-design/icons';
 import { downloadLogApi } from '@/api';
 
-/**
- * 下载日志页面
- */
 export default function DownloadLogPage() {
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [keyword, setKeyword] = useState('');
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
 
   const loadLogs = async () => {
     setLoading(true);
     try {
-      const data = await downloadLogApi.list(keyword || undefined);
-      setLogs(data);
+      const data = await downloadLogApi.list(page, pageSize);
+      setLogs(data.list || []);
+      setTotal(data.total || 0);
     } catch {
-      message.error('加载下载日志失败');
       setLogs([]);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    const abortController = new AbortController();
-    loadLogs();
-    return () => abortController.abort();
-  }, []);
+  useEffect(() => { loadLogs(); }, [page, pageSize]);
 
   const handleDelete = async (id: number) => {
     try {
       await downloadLogApi.remove(id);
       message.success('已删除');
       loadLogs();
-    } catch {
-      message.error('删除失败');
-    }
+    } catch { message.error('删除失败'); }
   };
 
   const columns = [
@@ -46,18 +39,22 @@ export default function DownloadLogPage() {
     {
       title: '文件类型', dataIndex: 'fileType', key: 'fileType', width: 100,
       render: (type: string) => (
-        <Tag color={type === 'excel' ? 'green' : 'blue'} icon={type === 'excel' ? <FileExcelOutlined /> : <FileTextOutlined />}>
+        <Tag color={type === 'excel' ? 'green' : 'blue'}
+          icon={type === 'excel' ? <FileExcelOutlined /> : <FileTextOutlined />}>
           {type === 'excel' ? 'Excel' : 'CSV'}
         </Tag>
       ),
     },
     { title: '数据条数', dataIndex: 'dataCount', key: 'dataCount', width: 100 },
     { title: '下载时间', dataIndex: 'downloadTime', key: 'downloadTime', width: 180 },
-    { title: '操作', key: 'action', width: 100, render: (_: any, rec: any) => (
-      <Popconfirm title="确定删除此日志？" onConfirm={() => handleDelete(rec.id)}>
-        <Button type="link" danger icon={<DeleteOutlined />} size="small">删除</Button>
-      </Popconfirm>
-    )},
+    {
+      title: '操作', key: 'action', width: 100,
+      render: (_: any, rec: any) => (
+        <Popconfirm title="确定删除此日志？" onConfirm={() => handleDelete(rec.id)}>
+          <Button type="link" danger icon={<DeleteOutlined />} size="small">删除</Button>
+        </Popconfirm>
+      ),
+    },
   ];
 
   return (
@@ -65,8 +62,8 @@ export default function DownloadLogPage() {
       title="下载日志"
       extra={
         <Space>
-          <Input placeholder="搜索用户/清单" prefix={<SearchOutlined />} value={keyword} onChange={(e) => setKeyword(e.target.value)} onPressEnter={loadLogs} style={{ width: 200 }} />
           <Button icon={<ReloadOutlined />} onClick={loadLogs}>刷新</Button>
+          <span style={{ color: '#999' }}>共 {total} 条</span>
         </Space>
       }
     >
@@ -76,7 +73,12 @@ export default function DownloadLogPage() {
         rowKey="id"
         loading={loading}
         scroll={{ x: 800 }}
-        pagination={{ showSizeChanger: true, showTotal: (t) => `共 ${t} 条` }}
+        pagination={{
+          current: page, pageSize, total,
+          showSizeChanger: true,
+          showTotal: (t) => `共 ${t} 条`,
+          onChange: (p, ps) => { setPage(p); setPageSize(ps); },
+        }}
       />
     </Card>
   );

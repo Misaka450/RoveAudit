@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Put, Delete, Body, Param } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { RoleService } from './role.service';
-import { CreateRoleDto } from '../common/dto/create.dto';
+import { CreateRoleDto } from './dto/create-role.dto';
 
 /**
  * 角色管理控制器

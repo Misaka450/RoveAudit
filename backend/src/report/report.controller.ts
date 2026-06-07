@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { ReportService } from './report.service';
-import { CreateReportDto, UpdateReportDto } from '../common/dto/create.dto';
+import { CreateReportDto, UpdateReportDto } from './dto/create-report.dto';
 
 /**
  * 清单配置管理控制器
