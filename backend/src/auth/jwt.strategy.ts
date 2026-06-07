@@ -25,7 +25,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       // 不允许过期的 Token
       ignoreExpiration: false,
       // 使用配置中的密钥（main.ts 启动时已校验非空）
-      secretOrKey: secret,
+      secretOrKey: secret!,
     });
   }
 
