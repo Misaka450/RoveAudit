@@ -22,7 +22,7 @@ export default function WarningRulesPage() {
     try {
       const data = await warningApi.listRules();
       setRules(data);
-    } catch { /* 忽略 */ } finally { setLoading(false); }
+    } catch (err) { console.error('加载异常规则失败:', err); } finally { setLoading(false); }
   };
 
   useEffect(() => { loadRules(); }, []);
@@ -62,13 +62,15 @@ export default function WarningRulesPage() {
       }
       setModalVisible(false);
       loadRules();
-    } catch { /* 忽略 */ }
+    } catch (err) { console.error('保存异常规则失败:', err); }
   };
 
   const handleDelete = async (id: number) => {
-    await warningApi.removeRule(id);
-    message.success('已删除');
-    loadRules();
+    try {
+      await warningApi.removeRule(id);
+      message.success('已删除');
+      loadRules();
+    } catch (err) { console.error('删除异常规则失败:', err); }
   };
 
   const handleExecute = async (id: number) => {

@@ -2,13 +2,13 @@ import { create } from 'zustand';
 import { UserInfo } from '@/types';
 
 /**
- * 认证状态管理 - 存储用户登录信息和 Token
+ * 认证状态管理 - 存储用户登录信息
+ * Token 现在通过 HttpOnly Cookie 传递，前端不存储 Token
  */
 interface AuthState {
-  token: string | null;
   userInfo: UserInfo | null;
   /** 设置登录信息 */
-  setAuth: (token: string, userInfo: UserInfo) => void;
+  setAuth: (_token: string, userInfo: UserInfo) => void;
   /** 清除登录信息（退出登录） */
   logout: () => void;
   /** 是否已登录 */
@@ -16,20 +16,18 @@ interface AuthState {
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
-  token: localStorage.getItem('token'),
   userInfo: JSON.parse(localStorage.getItem('userInfo') || 'null'),
 
-  setAuth: (token: string, userInfo: UserInfo) => {
-    localStorage.setItem('token', token);
+  setAuth: (_token: string, userInfo: UserInfo) => {
+    // Token 由后端通过 HttpOnly Cookie 设置，前端不再存储 Token
     localStorage.setItem('userInfo', JSON.stringify(userInfo));
-    set({ token, userInfo });
+    set({ userInfo });
   },
 
   logout: () => {
-    localStorage.removeItem('token');
     localStorage.removeItem('userInfo');
-    set({ token: null, userInfo: null });
+    set({ userInfo: null });
   },
 
-  isLoggedIn: () => !!get().token,
+  isLoggedIn: () => !!get().userInfo,
 }));

@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { CacheService } from '../common/cache.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { Role } from './entities/role.entity';
@@ -17,6 +18,7 @@ export class RoleService {
     private menuRepository: Repository<Menu>,
     @InjectRepository(Permission)
     private permissionRepository: Repository<Permission>,
+    private cacheService: CacheService,
   ) {}
 
   /**
@@ -73,7 +75,9 @@ export class RoleService {
       role.permissions = permissionIds.length > 0 ? await this.permissionRepository.findBy({ id: In(permissionIds) }) : [];
     }
 
-    return this.roleRepository.save(role);
+    const savedRole = await this.roleRepository.save(role);
+    this.cacheService.delByPrefix('user:permissions:');
+    return savedRole;
   }
 
   /**

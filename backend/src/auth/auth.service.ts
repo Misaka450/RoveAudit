@@ -74,13 +74,11 @@ export class AuthService {
       }
     }
 
-    // 4. 签发 JWT Token（payload 中存放用户信息和权限清单）
+    // 4. 签发 JWT Token（payload 中存放核心用户信息）
     const payload = {
       userId: user.id,
       username: user.username,
       realName: user.realName,
-      permissions,
-      menus,
     };
 
     const token = this.jwtService.sign(payload);

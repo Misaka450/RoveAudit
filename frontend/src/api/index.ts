@@ -16,8 +16,8 @@ export const authApi = {
  */
 export const userApi = {
   /** 获取用户列表 */
-  list: (keyword?: string): Promise<User[]> =>
-    request.get('/users', { params: { keyword } }),
+  list: (keyword?: string, page?: number, pageSize?: number): Promise<any> =>
+    request.get('/users', { params: { keyword, page, pageSize } }),
   /** 创建用户 */
   create: (data: Partial<User>) => request.post('/users', data),
   /** 更新用户 */
@@ -121,9 +121,6 @@ export const dataQueryApi = {
   /** 根据清单编码查询数据 */
   query: (reportCode: string, params: any = {}): Promise<PageResult> =>
     request.get(`/data-query/report/${reportCode}`, { params }),
-  /** 执行自定义 SQL */
-  execute: (sql: string): Promise<any[]> =>
-    request.post('/data-query/execute', { sql }),
   /** 查询预览数据（仅前5行） */
   preview: (reportCode: string, params: any = {}): Promise<any[]> =>
     request.get(`/data-query/report/${reportCode}`, { params: { ...params, pageSize: 5 } }),
@@ -156,14 +153,13 @@ export const warningApi = {
 
 /**
  * 通用下载函数 - 支持 Excel / CSV
- * 使用 fetch 手动请求以支持自定义请求头，避免 window.open 无法传 token 的问题
+ * Token 由 HttpOnly Cookie 自动携带，无需手动设置请求头
  */
 const downloadFile = async (
   type: 'excel' | 'csv',
   reportCode: string,
   params: any = {},
 ) => {
-  const token = localStorage.getItem('token');
   const cleanParams: Record<string, string> = { reportCode };
   const filters: Record<string, string> = {};
   Object.entries(params).forEach(([key, value]) => {
@@ -180,7 +176,7 @@ const downloadFile = async (
   }
   const query = new URLSearchParams(cleanParams).toString();
   const resp = await fetch(`/api/download/${type}?${query}`, {
-    headers: { Authorization: `Bearer ${token}` },
+    credentials: 'include', // 携带 Cookie
   });
   if (!resp.ok) {
     message.error('下载失败');
@@ -213,8 +209,8 @@ export const downloadApi = {
  */
 export const downloadLogApi = {
   /** 获取下载日志列表 */
-  list: (keyword?: string): Promise<any[]> =>
-    request.get('/download/logs', { params: { keyword } }),
+  list: (keyword?: string, page?: number, pageSize?: number): Promise<any> =>
+    request.get('/download/logs', { params: { keyword, page, pageSize } }),
   /** 获取下载统计（今日/本月下载量、热门排行） */
   stats: (): Promise<{ todayCount: number; monthCount: number; topReports: { reportName: string; downloadCount: number }[] }> =>
     request.get('/download/stats'),

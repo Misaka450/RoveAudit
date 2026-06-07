@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Row, Col, Card, Select, Typography, Empty, Spin } from 'antd';
+import { Row, Col, Card, Select, Typography, Empty, Spin, message } from 'antd';
 import ReactECharts from 'echarts-for-react';
-import { reportApi, reportChartApi } from '@/api';
+import { reportApi, reportChartApi, dataQueryApi } from '@/api';
 import type { ReportConfig, ReportChartConfig } from '@/types';
 
 const { Title } = Typography;
@@ -27,18 +27,29 @@ export default function AnalysisPage() {
     }).catch(() => {});
   }, []);
 
-  // 加载选定清单的图表配置和数据
+  // 加载选定清单的图表配置，并调用数据查询接口获取真实数据
   useEffect(() => {
     if (!selectedReport) return;
     setLoading(true);
 
+    // 同时加载图表配置和清单数据（取全部数据用于图表渲染）
     Promise.all([
       reportChartApi.list(selectedReport),
-      // 模拟查询数据（实际项目中需要调用数据查询接口）
-      fetchMockData(selectedReport),
-    ]).then(([chartConfigs, mockData]) => {
+      dataQueryApi.query(selectedReport, { pageSize: 10000 }).catch(() => null),
+    ]).then(([chartConfigs, queryResult]) => {
       setCharts(chartConfigs);
-      setChartData(mockData);
+      // 将查询结果转换为 chartData 格式：按维度列名分组存储
+      if (queryResult && queryResult.list) {
+        const dataMap: Record<string, any[]> = {};
+        // 从图表配置中提取所有维度列
+        const dimColumns = [...new Set(chartConfigs.map((c: ReportChartConfig) => c.dimensionColumn))];
+        dimColumns.forEach((col) => {
+          dataMap[col] = queryResult.list;
+        });
+        setChartData(dataMap);
+      } else {
+        setChartData({});
+      }
     }).catch(() => {
       setCharts([]);
       setChartData({});
@@ -147,52 +158,3 @@ export default function AnalysisPage() {
   );
 }
 
-/** 模拟数据（实际应调用后端数据查询接口） */
-async function fetchMockData(reportCode: string): Promise<Record<string, any[]>> {
-  // 模拟延迟
-  await new Promise((r) => setTimeout(r, 300));
-
-  // 根据不同的清单返回不同的模拟数据
-  const mockDataMap: Record<string, any[]> = {
-    'user_develop': [
-      { month: '1月', user_count: 120, active_count: 800 },
-      { month: '2月', user_count: 200, active_count: 900 },
-      { month: '3月', user_count: 150, active_count: 950 },
-      { month: '4月', user_count: 180, active_count: 1000 },
-      { month: '5月', user_count: 220, active_count: 1100 },
-      { month: '6月', user_count: 250, active_count: 1200 },
-    ],
-    'revenue_analysis': [
-      { month: '1月', revenue: 5800, cost: 3200 },
-      { month: '2月', revenue: 6200, cost: 3500 },
-      { month: '3月', revenue: 7100, cost: 3800 },
-      { month: '4月', revenue: 6900, cost: 3600 },
-      { month: '5月', revenue: 8300, cost: 4100 },
-      { month: '6月', revenue: 9800, cost: 4500 },
-    ],
-    'traffic_stats': [
-      { province: '广东', traffic: 9800 },
-      { province: '浙江', traffic: 8500 },
-      { province: '江苏', traffic: 7800 },
-      { province: '山东', traffic: 7200 },
-      { province: '河南', traffic: 6800 },
-      { province: '四川', traffic: 6200 },
-    ],
-    'channel_stats': [
-      { channel: '线上渠道', ratio: 45 },
-      { channel: '营业厅', ratio: 30 },
-      { channel: '代理点', ratio: 15 },
-      { channel: '其他', ratio: 10 },
-    ],
-    'audit_summary': [
-      { month: '1月', pass_count: 560, fail_count: 12 },
-      { month: '2月', pass_count: 590, fail_count: 8 },
-      { month: '3月', pass_count: 620, fail_count: 15 },
-      { month: '4月', pass_count: 580, fail_count: 10 },
-      { month: '5月', pass_count: 640, fail_count: 6 },
-      { month: '6月', pass_count: 610, fail_count: 9 },
-    ],
-  };
-
-  return (mockDataMap[reportCode] || []) as any;
-}

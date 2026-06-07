@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Param, Query, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { DataQueryService } from './data-query.service';
 
@@ -22,21 +22,23 @@ export class DataQueryController {
     @Param('reportCode') reportCode: string,
     @Query() params: Record<string, any>,
   ) {
-    const { page = 1, pageSize = 20, ...queryParams } = params;
+    const { page: pageStr = 1, pageSize: pageSizeStr = 20, ...queryParams } = params;
+    const page = Number(pageStr);
+    const pageSize = Number(pageSizeStr);
+
+    // 校验分页参数合法性
+    if (!Number.isInteger(page) || page < 1) {
+      throw new BadRequestException('页码必须为正整数');
+    }
+    if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > 10000) {
+      throw new BadRequestException('每页条数必须为 1~10000 的整数');
+    }
+
     return this.dataQueryService.queryByReportCode(
       reportCode,
       queryParams,
-      +page,
-      +pageSize,
+      page,
+      pageSize,
     );
-  }
-
-  /**
-   * 执行自定义 SQL（用于图表分析等场景）
-   */
-  @Post('execute')
-  @ApiOperation({ summary: '执行自定义 SQL 查询' })
-  executeQuery(@Body('sql') sql: string) {
-    return this.dataQueryService.executeQuery(sql);
   }
 }

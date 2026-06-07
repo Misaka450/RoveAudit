@@ -5,6 +5,7 @@ import { Layout, Menu, Button, Dropdown, Avatar, theme, message } from 'antd';
 import * as Icons from '@ant-design/icons';
 import { useAuthStore } from '@/store/authStore';
 import { menuApi } from '@/api';
+import { setNavigate } from '@/utils/navigationService';
 import type { MenuItem } from '@/types';
 
 const { Header, Sider, Content } = Layout;
@@ -30,6 +31,11 @@ export default function MainLayout() {
   const location = useLocation();
   const { userInfo, logout } = useAuthStore();
   const { token: themeToken } = theme.useToken();
+
+  // 注册导航服务，使 axios 拦截器也能使用 React Router 跳转
+  useEffect(() => {
+    setNavigate(navigate);
+  }, [navigate]);
 
   // 使用 useCallback 定义菜单加载函数（稳定引用，避免重复执行）
   const loadMenus = useCallback(async () => {

@@ -32,6 +32,10 @@ export class DataQueryService {
     for (const key of Object.keys(params)) {
       const value = params[key];
       if (value !== undefined && value !== null && value !== '' && key !== 'filters') {
+        // 校验参数名：只允许字母、数字、下划线，防止恶意构造的 key
+        if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(key)) {
+          continue;
+        }
         const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
         // 使用 ? 占位符替代直接嵌入值
         if (regex.test(sql)) {
@@ -79,16 +83,5 @@ export class DataQueryService {
       pageSize,
       totalPages: Math.ceil(total / pageSize),
     };
-  }
-
-  /**
-   * 执行自定义 SQL 查询（用于图表分析）
-   */
-  async executeQuery(sql: string) {
-    const trimmedSql = sql.trim().toUpperCase();
-    if (!trimmedSql.startsWith('SELECT')) {
-      throw new BadRequestException('只允许执行 SELECT 查询');
-    }
-    return this.dorisService.query(sql);
   }
 }

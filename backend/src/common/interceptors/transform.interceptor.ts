@@ -19,7 +19,6 @@ export class TransformInterceptor implements NestInterceptor {
         code: 200,
         data,
         message: 'success',
-        timestamp: new Date().toISOString(),
       })),
     );
   }

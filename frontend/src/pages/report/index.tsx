@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Card, Tabs, Tag, Row, Col, Button, Space, Empty, Input } from 'antd';
+import { useNavigate } from 'react-router-dom';
+import { Card, Tabs, Tag, Row, Col, Button, Space, Empty, Input, message } from 'antd';
 import { TableOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import { reportApi } from '@/api';
 import type { ReportConfig } from '@/types';
@@ -11,14 +12,15 @@ const { Search } = Input;
  * 支持按分类筛选 + 关键词搜索 + 最近使用记录
  */
 export default function ReportCenter() {
+  const navigate = useNavigate();
   const [categories, setCategories] = useState<string[]>([]);
   const [reports, setReports] = useState<ReportConfig[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>('');
   const [keyword, setKeyword] = useState('');
 
   useEffect(() => {
-    reportApi.categories().then(setCategories).catch(() => {});
-    reportApi.list().then(setReports).catch(() => {});
+    reportApi.categories().then(setCategories).catch((err) => console.error('加载分类失败:', err));
+    reportApi.list().then(setReports).catch((err) => console.error('加载清单列表失败:', err));
   }, []);
 
   const handleCategoryChange = (key: string) => {
@@ -67,7 +69,7 @@ export default function ReportCenter() {
           <Col xs={24} sm={12} lg={8} key={report.id}>
             <Card
               hoverable
-              onClick={() => window.location.href = `/report-list/${report.reportCode}`}
+              onClick={() => navigate(`/report-list/${report.reportCode}`)}
               style={{ cursor: 'pointer' }}
             >
               <Card.Meta

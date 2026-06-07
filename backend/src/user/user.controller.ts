@@ -18,8 +18,14 @@ export class UserController {
   @Get()
   @ApiOperation({ summary: '查询用户列表' })
   @ApiQuery({ name: 'keyword', required: false, description: '搜索关键词（账号或姓名）' })
-  findAll(@Query('keyword') keyword?: string) {
-    return this.userService.findAll(keyword);
+  @ApiQuery({ name: 'page', required: false, description: '页码' })
+  @ApiQuery({ name: 'pageSize', required: false, description: '每页条数' })
+  findAll(
+    @Query('keyword') keyword?: string,
+    @Query('page') page?: number,
+    @Query('pageSize') pageSize?: number,
+  ) {
+    return this.userService.findAll(keyword, page ? +page : undefined, pageSize ? +pageSize : undefined);
   }
 
   @Get(':id')
@@ -56,8 +62,8 @@ export class UserController {
   @ApiOperation({ summary: '获取用户导入模板（返回示例数据）' })
   getTemplate() {
     return [
-      { username: 'zhangsan', realName: '张三', department: '技术部', phone: '13800001001', roleNames: '普通用户', password: '123456' },
-      { username: 'lisi', realName: '李四', department: '市场部', phone: '13800001002', roleNames: '普通用户', password: '123456' },
+      { username: '请输入用户名', realName: '请输入姓名', department: '请输入部门', phone: '请输入手机号', roleNames: '普通用户', password: '请填写密码' },
+      { username: '请输入用户名', realName: '请输入姓名', department: '请输入部门', phone: '请输入手机号', roleNames: '普通用户', password: '请填写密码' },
     ];
   }
 

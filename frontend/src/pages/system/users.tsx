@@ -107,13 +107,7 @@ export default function UserPage() {
     if (importData.length === 0) { message.warning('没有数据可导入'); return; }
     setImportLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const resp = await fetch('/api/users/batch-import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(importData),
-      });
-      const result = await resp.json();
+      const result = await userApi.batchImport(importData);
       setImportResult(result);
       setImportStep('result');
       loadUsers();

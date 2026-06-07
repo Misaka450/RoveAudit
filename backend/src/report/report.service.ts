@@ -58,9 +58,9 @@ export class ReportService {
 
   /** 清除清单相关缓存（在增/删/改后调用，避免脏数据） */
   private clearCache() {
-    this.cacheService.del('reports:all');
-    this.cacheService.del('reports:categories');
-    // 按分类的缓存无法全部清除，但已失效的会在 30 秒后自动过期
+    // 批量清除所有 reports: 前缀的缓存（包括 reports:all、reports:{category}、report:code:{code} 等）
+    this.cacheService.delByPrefix('reports:');
+    this.cacheService.delByPrefix('report:');
   }
 
   /**

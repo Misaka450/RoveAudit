@@ -5,8 +5,6 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
-import { CacheService } from './common/cache.service';
-import { NotificationService } from './common/notification.service';
 import { AuditLogModule } from './common/audit-log.module';
 import { AuditMiddleware } from './common/middleware/audit.middleware';
 // 业务模块
@@ -18,6 +16,7 @@ import { ReportModule } from './report/report.module';
 import { DataQueryModule } from './data-query/data-query.module';
 import { DownloadModule } from './download/download.module';
 import { WarningModule } from './warning/warning.module';
+import { CommonModule } from './common/common.module';
 
 /**
  * 应用根模块 - 组装所有子模块和全局配置
@@ -57,6 +56,7 @@ import { WarningModule } from './warning/warning.module';
     ScheduleModule.forRoot(),
 
     // --- 业务模块 ---
+    CommonModule,
     AuthModule,
     UserModule,
     RoleModule,
@@ -69,9 +69,6 @@ import { WarningModule } from './warning/warning.module';
   ],
   controllers: [AppController],
   providers: [
-    // 全局服务（各模块可注入使用）
-    CacheService,
-    NotificationService,
     // 全局限流守卫
     { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],

@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { CacheService } from '../common/cache.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, Like, FindOptionsWhere } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
@@ -17,24 +18,34 @@ export class UserService {
     private userRepository: Repository<User>,
     @InjectRepository(Role)
     private roleRepository: Repository<Role>,
+    private cacheService: CacheService,
   ) {}
 
   /**
-   * 查询用户列表（支持按账号、姓名模糊搜索）
+   * 查询用户列表（支持按账号、姓名模糊搜索，支持分页）
    */
-  async findAll(keyword?: string) {
-    if (keyword) {
-      // 模糊搜索：账号或姓名包含关键词
-      return this.userRepository.find({
-        where: [
+  async findAll(keyword?: string, page?: number, pageSize?: number) {
+    const where = keyword
+      ? [
           { username: Like(`%${keyword}%`) },
           { realName: Like(`%${keyword}%`) },
-        ],
+        ]
+      : {};
+
+    if (page && pageSize) {
+      const skip = (page - 1) * pageSize;
+      const [list, total] = await this.userRepository.findAndCount({
+        where,
         relations: ['roles'],
         order: { createTime: 'DESC' },
+        skip,
+        take: pageSize,
       });
+      return { list, total };
     }
+
     return this.userRepository.find({
+      where,
       relations: ['roles'],
       order: { createTime: 'DESC' },
     });
@@ -91,7 +102,9 @@ export class UserService {
       user.roles = await this.roleRepository.findBy({ id: In(roleIds) });
     }
 
-    return this.userRepository.save(user);
+    const savedUser = await this.userRepository.save(user);
+    this.cacheService.del(`user:permissions:${id}`);
+    return savedUser;
   }
 
   /**

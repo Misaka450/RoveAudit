@@ -64,12 +64,6 @@ export default function LoginPage() {
             </Button>
           </Form.Item>
         </Form>
-
-        <div style={{ textAlign: 'center' }}>
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            默认账号：admin / admin123
-          </Text>
-        </div>
       </Card>
     </div>
   );

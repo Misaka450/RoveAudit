@@ -1,24 +1,20 @@
 import axios, { AxiosRequestConfig } from 'axios';
 import { message } from 'antd';
+import { navigate } from './navigationService';
 
 /**
- * Axios 请求封装 - 统一处理 Token、错误提示
- * 响应拦截器会自动提取 res.data 返回，所以调用方拿到的是业务数据
+ * Axios 请求封装 - 统一处理错误提示
+ * Token 由后端通过 HttpOnly Cookie 自动携带，无需前端添加
  */
 const instance = axios.create({
   baseURL: '/api', // 后端 API 基础路径
   timeout: 30000,  // 请求超时时间：30秒
+  withCredentials: true, // 允许跨域携带 Cookie
 });
 
-// 请求拦截器：自动添加 Token
+// 请求拦截器：无需手动添加 Token，Cookie 自动携带
 instance.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
+  (config) => config,
   (error) => Promise.reject(error),
 );
 
@@ -37,10 +33,9 @@ instance.interceptors.response.use(
     if (error.response) {
       const { status } = error.response;
       if (status === 401) {
-        // Token 过期，清除登录状态并跳转到登录页
-        localStorage.removeItem('token');
+        // Token 过期，清除本地状态并跳转到登录页
         localStorage.removeItem('userInfo');
-        window.location.href = '/login';
+        navigate('/login');
         message.error('登录已过期，请重新登录');
       } else if (status === 403) {
         message.error('没有操作权限');

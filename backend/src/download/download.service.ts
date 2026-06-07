@@ -26,22 +26,25 @@ export class DownloadService {
   ) {}
 
   /**
-   * 下载清单数据为 Excel 文件
+   * 获取下载元数据 - 仅加载第 1 页第一行以获取结构，不加载全部数据到内存
    */
-  async downloadExcel(
+  private async fetchMetadata(
     reportCode: string,
     params: Record<string, any>,
-    userId: number,
-    username: string,
-  ): Promise<{ buffer: Buffer; fileName: string }> {
+  ): Promise<{
+    report: Report;
+    total: number;
+    columns: string[];
+    columnMap: Map<string, string>;
+  }> {
     const report = await this.reportService.findByCode(reportCode);
     if (!report.enableDownload) {
       throw new BadRequestException('该清单不允许下载');
     }
 
-    // 先获取第一页数据，同时获得总条数
+    // 先获取第一页的 1 条数据，同时获得总条数和结构
     const firstPage = await this.dataQueryService.queryByReportCode(
-      reportCode, params, 1, this.BATCH_SIZE,
+      reportCode, params, 1, 1,
     );
     const total = firstPage.total;
     if (total === 0) {
@@ -52,12 +55,36 @@ export class DownloadService {
     const columnConfigs = await this.reportColumnService.findByReportCode(reportCode);
     const columnMap = new Map(columnConfigs.map((c) => [c.columnName, c.columnLabel]));
 
-    // 创建 Excel 工作簿
-    const workbook = new ExcelJS.Workbook();
+    const columns = firstPage.list.length > 0 ? Object.keys(firstPage.list[0]) : [];
+
+    return { report, total, columns, columnMap };
+  }
+
+  /**
+   * 下载清单数据为 Excel 文件（流式写入，优化内存占用）
+   */
+  async downloadExcel(
+    reportCode: string,
+    params: Record<string, any>,
+    userId: number,
+    username: string,
+    res: any, // Express.Response
+  ): Promise<void> {
+    const { report, total, columns, columnMap } = await this.fetchMetadata(reportCode, params);
+    const fileName = `${report.reportName}_${Date.now()}.xlsx`;
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=${encodeURIComponent(fileName)}`);
+
+    // 使用 ExcelJS WorkbookWriter 流式写入 res
+    const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({
+      stream: res,
+      useStyles: true,
+      useSharedStrings: true,
+    });
     const sheet = workbook.addWorksheet(report.reportName);
 
-    // 从第一页数据提取表头，优先使用字段配置的中文名
-    const columns = Object.keys(firstPage.list[0]);
+    // 使用字段配置的中文列名作为表头
     sheet.columns = columns.map((col) => ({
       header: columnMap.get(col) || col,
       key: col,
@@ -71,67 +98,50 @@ export class DownloadService {
       type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' },
     };
     headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
+    headerRow.commit();
 
-    // 写入第一页数据
-    sheet.addRows(firstPage.list);
-
-    // 分批加载剩余数据并追加到表格
+    // 分批加载并流式写入数据
     const totalPages = Math.ceil(total / this.BATCH_SIZE);
-    for (let p = 2; p <= totalPages; p++) {
+    for (let p = 1; p <= totalPages; p++) {
       const pageData = await this.dataQueryService.queryByReportCode(
         reportCode, params, p, this.BATCH_SIZE,
       );
-      sheet.addRows(pageData.list);
+      for (const row of pageData.list) {
+        sheet.addRow(row).commit();
+      }
     }
 
-    const buffer = await workbook.xlsx.writeBuffer();
-    const fileName = `${report.reportName}_${Date.now()}.xlsx`;
+    await sheet.commit();
+    await workbook.commit();
 
     // 记录下载日志
     await this.saveLog(userId, username, report, fileName, 'excel', total);
-
-    return { buffer: Buffer.from(buffer), fileName };
   }
 
   /**
-   * 下载清单数据为 CSV 文件
+   * 下载清单数据为 CSV 文件（流式写入，优化内存占用）
    */
   async downloadCsv(
     reportCode: string,
     params: Record<string, any>,
     userId: number,
     username: string,
-  ): Promise<{ buffer: Buffer; fileName: string }> {
-    const report = await this.reportService.findByCode(reportCode);
-    if (!report.enableDownload) {
-      throw new BadRequestException('该清单不允许下载');
-    }
+    res: any, // Express.Response
+  ): Promise<void> {
+    const { report, total, columns, columnMap } = await this.fetchMetadata(reportCode, params);
+    const fileName = `${report.reportName}_${Date.now()}.csv`;
 
-    // 分批获取数据，避免一次性加载过多
-    const firstPage = await this.dataQueryService.queryByReportCode(
-      reportCode, params, 1, this.BATCH_SIZE,
-    );
-    const total = firstPage.total;
-    if (total === 0) {
-      throw new BadRequestException('没有可下载的数据');
-    }
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename=${encodeURIComponent(fileName)}`);
 
-    // 获取字段配置，如果有配置则使用中文列名
-    const columnConfigs = await this.reportColumnService.findByReportCode(reportCode);
-    const columnMap = new Map(columnConfigs.map((c) => [c.columnName, c.columnLabel]));
+    // 写入 BOM 防乱码
+    res.write('\uFEFF');
 
-    const columns = Object.keys(firstPage.list[0]);
-
-    // 使用中文列名作为 CSV 表头
+    // 写入表头
     const headers = columns.map((col) => columnMap.get(col) || col);
+    res.write(headers.join(',') + '\n');
 
-    // 构建 CSV 内容（按行追加，避免一次性构建大字符串）
-    const csvParts: string[] = [];
-
-    // BOM + 表头
-    csvParts.push('\uFEFF' + headers.join(','));
-
-    // CSV 行转义
+    // CSV 行转义函数
     const toCsvRow = (row: any) =>
       columns.map((col) => {
         const val = String(row[col] ?? '');
@@ -140,28 +150,20 @@ export class DownloadService {
           : val;
       }).join(',');
 
-    // 写入第一页
-    for (const row of firstPage.list) {
-      csvParts.push(toCsvRow(row));
-    }
-
-    // 分批加载剩余数据
+    // 分批加载并写入
     const totalPages = Math.ceil(total / this.BATCH_SIZE);
-    for (let p = 2; p <= totalPages; p++) {
+    for (let p = 1; p <= totalPages; p++) {
       const pageData = await this.dataQueryService.queryByReportCode(
         reportCode, params, p, this.BATCH_SIZE,
       );
       for (const row of pageData.list) {
-        csvParts.push(toCsvRow(row));
+        res.write(toCsvRow(row) + '\n');
       }
     }
 
-    const buffer = Buffer.from(csvParts.join('\n'), 'utf-8');
-    const fileName = `${report.reportName}_${Date.now()}.csv`;
+    res.end();
 
     await this.saveLog(userId, username, report, fileName, 'csv', total);
-
-    return { buffer, fileName };
   }
 
   /**
@@ -212,19 +214,29 @@ export class DownloadService {
     });
   }
 
-  /** 查询下载日志 */
-  async findAll(keyword?: string) {
-    if (keyword) {
-      return this.downloadLogRepository.find({
-        where: [
+  /** 查询下载日志（支持分页） */
+  async findAll(keyword?: string, page?: number, pageSize?: number) {
+    const where = keyword
+      ? [
           { username: Like(`%${keyword}%`) },
           { reportName: Like(`%${keyword}%`) },
           { fileName: Like(`%${keyword}%`) },
-        ],
+        ]
+      : {};
+
+    if (page && pageSize) {
+      const skip = (page - 1) * pageSize;
+      const [list, total] = await this.downloadLogRepository.findAndCount({
+        where,
         order: { downloadTime: 'DESC' },
+        skip,
+        take: pageSize,
       });
+      return { list, total };
     }
+
     return this.downloadLogRepository.find({
+      where,
       order: { downloadTime: 'DESC' },
     });
   }
