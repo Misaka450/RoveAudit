@@ -61,19 +61,9 @@ async function bootstrap() {
   // 注册全局响应拦截器（统一成功响应格式）
   app.useGlobalInterceptors(new TransformInterceptor());
 
-  // 允许跨域（从环境变量读取允许的来源，多个用逗号分隔）
-  const allowedOrigins = process.env.CORS_ORIGINS
-    ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim())
-    : ['http://localhost:5173', 'http://localhost:3000'];
+  // 允许跨域（允许所有来源）
   app.enableCors({
-    origin: (origin, callback) => {
-      // 允许无 origin 的请求（如 Postman、服务端调用）
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error(`不允许的来源: ${origin}`));
-      }
-    },
+    origin: true,
     credentials: true,
   });
 

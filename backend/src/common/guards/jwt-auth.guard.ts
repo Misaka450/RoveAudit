@@ -28,9 +28,9 @@ export class JwtAuthGuard implements CanActivate {
     ]);
     if (isPublic) return true;
 
-    // 从请求头中获取 JWT Token
+    // 从请求头或 Cookie 中获取 JWT Token
     const request = context.switchToHttp().getRequest<Request>();
-    const token = this.extractTokenFromHeader(request);
+    const token = this.extractTokenFromHeader(request) || this.extractTokenFromCookie(request);
     if (!token) {
       throw new UnauthorizedException('请先登录');
     }
@@ -46,10 +46,20 @@ export class JwtAuthGuard implements CanActivate {
   }
 
   /**
-   * 从请求头 Authorization: Bearer xxx 中提取 Token
+   * 从请求头 Authorization: Bearer *** 中提取 Token
    */
   private extractTokenFromHeader(request: Request): string | undefined {
     const [type, token] = request.headers.authorization?.split(' ') ?? [];
     return type === 'Bearer' ? token : undefined;
+  }
+
+  /**
+   * 从 Cookie 中提取 Token（HttpOnly Cookie 方式）
+   */
+  private extractTokenFromCookie(request: Request): string | undefined {
+    const cookies = request.cookies;
+    if (!cookies) return undefined;
+    // 尝试读取 auth_token cookie
+    return cookies['auth_token'] || cookies['token'] || undefined;
   }
 }

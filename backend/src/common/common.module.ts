@@ -7,7 +7,13 @@ import { NotificationService } from './notification.service';
  */
 @Global()
 @Module({
-  providers: [CacheService, NotificationService],
+  providers: [
+    {
+      provide: CacheService,
+      useFactory: () => new CacheService(500),
+    },
+    NotificationService,
+  ],
   exports: [CacheService, NotificationService],
 })
 export class CommonModule {}

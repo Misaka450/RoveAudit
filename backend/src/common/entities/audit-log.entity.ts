@@ -41,7 +41,7 @@ export class AuditLog {
   @Column({ type: 'smallint', default: 1, comment: '操作状态：1-成功 0-失败' })
   status: number;
 
-  @Column({ type: 'text', nullable: true, comment: '错误信息' })
+  @Column({ name: 'error_msg', type: 'text', nullable: true, comment: '错误信息' })
   errorMsg: string;
 
   @Column({ type: 'int', nullable: true, comment: '耗时（毫秒）' })

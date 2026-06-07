@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import {
   Card, Table, Button, Space, Input, DatePicker, Tag, message, Tooltip, Select, Row, Col, Form,
 } from 'antd';
@@ -27,11 +27,19 @@ export default function ReportListPage() {
   const [dateRange, setDateRange] = useState<[string, string] | null>(null);
   const [previewMode, setPreviewMode] = useState(false);
 
-  // 解析 query_params 自动生成查询条件
-  const queryParamsConfig: QueryParamConfig[] = (() => {
+  // 解析 query_params 自动生成查询条件（useMemo 稳定引用，避免死循环）
+  const queryParamsConfig: QueryParamConfig[] = useMemo(() => {
     if (!report?.queryParams) return [];
     try { return JSON.parse(report.queryParams); } catch { return []; }
-  })();
+  }, [report?.queryParams]);
+
+  // 用 ref 存储最新值，避免 loadData 依赖频繁变化的状态
+  const activeFiltersRef = useRef(activeFilters);
+  activeFiltersRef.current = activeFilters;
+  const dateRangeRef = useRef(dateRange);
+  dateRangeRef.current = dateRange;
+  const queryParamsRef = useRef(queryParamsConfig);
+  queryParamsRef.current = queryParamsConfig;
 
   // 加载清单配置
   useEffect(() => {
@@ -50,7 +58,7 @@ export default function ReportListPage() {
     return () => abortController.abort();
   }, [reportCode]);
 
-  // 从数据中提取列定义
+  // 从数据中提取列定义（不依赖 activeFilters，避免死循环）
   const buildColumns = useCallback((cols: string[], columnConfigs?: any[]) => {
     return cols.map((key) => {
       // 查找字段配置
@@ -59,8 +67,6 @@ export default function ReportListPage() {
       // 如果配置了不显示，跳过
       if (config && !config.visible) return null;
 
-      const isFiltered = activeFilters[key] !== undefined && activeFilters[key] !== '';
-
       return {
         title: config?.columnLabel || key,
         dataIndex: key,
@@ -68,14 +74,13 @@ export default function ReportListPage() {
         width: config?.width || 150,
         align: config?.align || 'left',
         ellipsis: true,
-        filterIcon: <FilterOutlined style={{ color: isFiltered ? '#1677ff' : undefined }} />,
         filterDropdown: ({ confirm }: { confirm: () => void }) => (
           <div style={{ padding: 8, width: 200 }}>
             <Input.Search
               placeholder={`搜索 ${config?.columnLabel || key}`}
-              defaultValue={isFiltered ? activeFilters[key] : ''}
+              defaultValue={activeFiltersRef.current[key] || ''}
               onSearch={(val) => {
-                const newFilters = { ...activeFilters };
+                const newFilters = { ...activeFiltersRef.current };
                 if (val) newFilters[key] = val;
                 else delete newFilters[key];
                 setActiveFilters(newFilters);
@@ -87,7 +92,7 @@ export default function ReportListPage() {
             />
             <div style={{ textAlign: 'right', marginTop: 4 }}>
               <Button size="small" onClick={() => {
-                const newFilters = { ...activeFilters };
+                const newFilters = { ...activeFiltersRef.current };
                 delete newFilters[key];
                 setActiveFilters(newFilters);
                 setPage(1);
@@ -103,22 +108,25 @@ export default function ReportListPage() {
         },
       };
     }).filter(Boolean);
-  }, [activeFilters]);
+  }, []);
 
-  // 加载数据
+  // 加载数据（通过 ref 读取频繁变化的值，避免依赖项不稳定导致死循环）
   const loadData = useCallback(async () => {
     if (!reportCode) return;
     setLoading(true);
     try {
-      const params: any = { page, pageSize: previewMode ? 5 : pageSize, filters: activeFilters };
-      if (dateRange) {
-        params.startDate = dateRange[0]!;
-        params.endDate = dateRange[1]!;
+      const filters = activeFiltersRef.current;
+      const dr = dateRangeRef.current;
+      const qpc = queryParamsRef.current;
+      const params: any = { page, pageSize: previewMode ? 5 : pageSize, filters };
+      if (dr) {
+        params.startDate = dr[0]!;
+        params.endDate = dr[1]!;
       }
       // 解析自动生成的查询条件参数
-      for (const qp of queryParamsConfig) {
-        if (activeFilters[qp.key]) {
-          params[qp.key] = activeFilters[qp.key];
+      for (const qp of qpc) {
+        if (filters[qp.key]) {
+          params[qp.key] = filters[qp.key];
         }
       }
       const result = await dataQueryApi.query(reportCode, params);
@@ -133,11 +141,11 @@ export default function ReportListPage() {
         setColumns([]);
       }
     } catch {
-      message.error('数据加载失败');
+      // 静默失败，不弹提示避免死循环刷屏
     } finally {
       setLoading(false);
     }
-  }, [reportCode, page, pageSize, activeFilters, dateRange, previewMode, queryParamsConfig, buildColumns]);
+  }, [reportCode, page, pageSize, previewMode, buildColumns]);
 
   useEffect(() => {
     loadData();
