@@ -2,7 +2,7 @@ import { Controller, Get, Post, Put, Delete, Body, Param } from '@nestjs/common'
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { MenuService } from './menu.service';
 import { Public } from '../common/decorators/public.decorator';
-import { CreateMenuDto } from '../common/dto/request.dto';
+import { CreateMenuDto } from '../common/dto/create.dto';
 
 /**
  * 菜单管理控制器
