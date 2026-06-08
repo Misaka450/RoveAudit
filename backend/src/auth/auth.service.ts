@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
+import * as crypto from 'node:crypto';
 import { User } from '../user/entities/user.entity';
 import { LoginDto } from './dto/login.dto';
 import { CaptchaService } from './captcha.service';
@@ -161,8 +162,9 @@ export class AuthService {
       }
     }
 
-    // 6. 签发 JWT Token
+    // 6. 签发 JWT Token（带 jti 字段，用于 Token 黑名单唯一标识）
     const payload = {
+      jti: crypto.randomUUID(),
       userId: user.id,
       username: user.username,
       realName: user.realName,
@@ -199,5 +201,13 @@ export class AuthService {
     const count = this.failCountMap.get(username) || 0;
     const remain = this.CAPTCHA_THRESHOLD - count;
     return Math.max(0, remain);
+  }
+
+  /**
+   * 验证 JWT Token 并返回 payload（不抛异常则验证通过）
+   * 用于登出时从 Token 中提取过期时间等信息
+   */
+  verifyToken(token: string): { userId: number; exp: number } {
+    return this.jwtService.verify(token);
   }
 }

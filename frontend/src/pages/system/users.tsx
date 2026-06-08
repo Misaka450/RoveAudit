@@ -59,7 +59,17 @@ export default function UserPage() {
   };
 
   // ==================== Excel 批量导入 ====================
+  /** 最大文件大小 10MB */
+  const MAX_FILE_SIZE_MB = 10;
+  const MAX_FILE_SIZE = MAX_FILE_SIZE_MB * 1024 * 1024;
+
   const handleFileUpload = (file: File) => {
+    // 文件大小校验
+    if (file.size > MAX_FILE_SIZE) {
+      message.error(`文件过大，最大允许 ${MAX_FILE_SIZE_MB}MB，请压缩或分割文件`);
+      return false;
+    }
+
     const reader = new FileReader();
     reader.onload = (e) => {
       try {

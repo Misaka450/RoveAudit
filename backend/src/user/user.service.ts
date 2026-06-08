@@ -7,6 +7,7 @@ import { User } from './entities/user.entity';
 import { Role } from '../role/entities/role.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { ImportUserRowDto } from './dto/batch-import.dto';
 
 /**
  * 用户管理服务
@@ -124,7 +125,7 @@ export class UserService {
   /**
    * 批量导入用户
    /** 批量导入用户（限制最多 500 行） */
-   async batchImport(data: any[]) {
+   async batchImport(data: ImportUserRowDto[]) {
      const MAX_BATCH_IMPORT_ROWS = 500;
      if (data.length > MAX_BATCH_IMPORT_ROWS) {
        return {

@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Res, Req, Get, Query } from '@nestjs/common';
+import { Controller, Post, Body, Res, Req, Get, Query, UnauthorizedException } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Response, Request } from 'express';
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
@@ -26,9 +26,11 @@ export class AuthController {
   /**
    * 获取图片验证码
    * 返回 SVG 图片，captchaId 通过响应头 X-Captcha-Id 返回
+   * 限流：每分钟最多 30 次验证码请求，防止被恶意调用耗尽内存
    */
   @Get('captcha')
   @Public()
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
   @ApiOperation({ summary: '获取图片验证码' })
   getCaptcha(@Res() res: Response) {
     const { captchaId, svg } = this.captchaService.generate();
@@ -72,7 +74,9 @@ export class AuthController {
       path: '/',
     });
 
-    return result;
+    return {
+      userInfo: result.userInfo,
+    };
   }
 
   /**
@@ -84,16 +88,19 @@ export class AuthController {
   logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     // 将当前 Token 加入黑名单，使其立即失效
     const token = req.cookies?.[TOKEN_COOKIE_NAME] || req.headers.authorization?.split(' ')[1];
-    if (token) {
-      try {
-        // 解析 JWT payload 获取过期时间（不验证签名，因为要解的就是当前 token）
-        const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-        if (payload?.exp) {
-          this.tokenBlacklistService.addToBlacklist(token, payload.exp);
-        }
-      } catch {
-        // 解析失败则忽略，仍然清除 Cookie
-      }
+
+    if (!token) {
+      res.clearCookie(TOKEN_COOKIE_NAME, { path: '/' });
+      return { message: '已登出' };
+    }
+
+    // 验证 Token（提取 payload 中的 exp 等）
+    try {
+      const payload = this.authService.verifyToken(token);
+      // 将 Token 加入黑名单
+      this.tokenBlacklistService.addToBlacklist(token, payload.exp);
+    } catch {
+      // Token 解析失败则忽略，仍然清除 Cookie
     }
 
     res.clearCookie(TOKEN_COOKIE_NAME, { path: '/' });

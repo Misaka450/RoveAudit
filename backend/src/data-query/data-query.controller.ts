@@ -20,7 +20,7 @@ export class DataQueryController {
   @ApiQuery({ name: 'pageSize', required: false, description: '每页条数' })
   queryByReportCode(
     @Param('reportCode') reportCode: string,
-    @Query() params: Record<string, any>,
+    @Query() params: Record<string, string>,
   ) {
     const { page: pageStr = 1, pageSize: pageSizeStr = 20, ...queryParams } = params;
     const page = Number(pageStr);

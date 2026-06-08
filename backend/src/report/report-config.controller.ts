@@ -2,6 +2,8 @@ import { Controller, Get, Post, Put, Delete, Body, Param, Query } from '@nestjs/
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { ReportColumnService } from './report-column.service';
 import { ReportChartService } from './report-chart.service';
+import { SaveReportColumnsDto, ReportColumnItemDto } from './dto/report-column.dto';
+import { ReportChartDto } from './dto/report-chart.dto';
 
 /**
  * 清单字段配置控制器 - 管理每列的展示属性
@@ -49,14 +51,14 @@ export class ReportChartController {
 
   @Post()
   @ApiOperation({ summary: '创建图表配置' })
-  create(@Body() data: any) {
-    return this.chartService.create(data);
+  create(@Body() dto: ReportChartDto) {
+    return this.chartService.create(dto);
   }
 
   @Put(':id')
   @ApiOperation({ summary: '更新图表配置' })
-  update(@Param('id') id: number, @Body() data: any) {
-    return this.chartService.update(id, data);
+  update(@Param('id') id: number, @Body() dto: Partial<ReportChartDto>) {
+    return this.chartService.update(id, dto);
   }
 
   @Delete(':id')

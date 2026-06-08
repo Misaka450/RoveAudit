@@ -8,8 +8,8 @@ import request from '@/utils/request';
  */
 interface AuthState {
   userInfo: UserInfo | null;
-  /** 设置登录信息 */
-  setAuth: (_token: string, userInfo: UserInfo) => void;
+  /** 设置登录信息（Token 由后端 HttpOnly Cookie 管理，前端不存储 Token） */
+  setAuth: (userInfo: UserInfo) => void;
   /** 清除登录信息（退出登录） */
   logout: () => void;
   /** 是否已登录 */
@@ -19,8 +19,8 @@ interface AuthState {
 export const useAuthStore = create<AuthState>((set, get) => ({
   userInfo: JSON.parse(localStorage.getItem('userInfo') || 'null'),
 
-  setAuth: (_token: string, userInfo: UserInfo) => {
-    // Token 由后端通过 HttpOnly Cookie 设置，前端不再存储 Token
+  setAuth: (userInfo: UserInfo) => {
+    // Token 由后端通过 HttpOnly Cookie 管理，前端不需要存储 Token
     localStorage.setItem('userInfo', JSON.stringify(userInfo));
     set({ userInfo });
   },

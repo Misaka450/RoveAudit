@@ -1,11 +1,19 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { AuditLog } from './entities/audit-log.entity';
 
+/** TypeORM FindMany 选项类型（用于替代 any） */
+type FindAllOptions = {
+  keyword?: string;
+  page?: number;
+  pageSize?: number;
+};
+
 @Injectable()
 export class AuditLogService {
+  private readonly logger = new Logger(AuditLogService.name);
   constructor(
     @InjectRepository(AuditLog)
     private auditLogRepository: Repository<AuditLog>,
@@ -57,9 +65,13 @@ export class AuditLogService {
    */
   @Cron('0 2 * * *')
   async scheduledCleanup() {
-    const deleted = await this.cleanBefore(90);
-    if (deleted.affected && deleted.affected > 0) {
-      console.log(`[AuditLog] 自动清理了 ${deleted.affected} 条过期审计日志`);
+    try {
+      const deleted = await this.cleanBefore(90);
+      if (deleted.affected && deleted.affected > 0) {
+        this.logger.log(`自动清理了 ${deleted.affected} 条过期审计日志`);
+      }
+    } catch (error) {
+      this.logger.error(`定时清理审计日志失败: ${error.message}`);
     }
   }
 }

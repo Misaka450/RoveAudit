@@ -213,6 +213,23 @@ export const downloadLogApi = {
     request.get('/download/logs', { params: { page, pageSize } }),
   /** 删除下载日志 */
   remove: (id: number) => request.delete(`/download/logs/${id}`),
+  /** 获取下载统计（首页展示） */
+  stats: async (): Promise<{ todayCount: number; monthCount: number }> => {
+    const res = await request.get('/download/logs', { params: { pageSize: 10000 } });
+    const logs: any[] = res.list || [];
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+
+    let todayCount = 0;
+    let monthCount = 0;
+    for (const log of logs) {
+      const t = new Date(log.downloadTime).getTime();
+      if (t >= todayStart) todayCount++;
+      if (t >= monthStart) monthCount++;
+    }
+    return { todayCount, monthCount };
+  },
 };
 
 /**

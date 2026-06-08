@@ -122,11 +122,28 @@ export class WarningService {
 
   /**
    * 执行单条检测规则的核心逻辑
+   * 安全措施：禁止执行多语句 SQL（防止 SQL 注入攻击）
    */
   private async runDetection(rule: WarningRule) {
     const trimmedSql = rule.sqlContent.trim().toUpperCase();
+
+    // 安全检查：只允许 SELECT 查询
     if (!trimmedSql.startsWith('SELECT')) {
       throw new Error('只允许执行 SELECT 查询');
+    }
+
+    // 安全检查：禁止多语句执行（防止类似 "; DROP TABLE" 的注入）
+    if (rule.sqlContent.includes(';') && !rule.sqlContent.trim().endsWith(';')) {
+      throw new Error('禁止执行多语句 SQL');
+    }
+
+    // 安全检查：禁止危险关键字
+    const dangerousKeywords = ['DROP', 'DELETE', 'UPDATE', 'INSERT', 'ALTER', 'CREATE', 'EXEC', 'TRUNCATE'];
+    const sqlWords = rule.sqlContent.toUpperCase().split(/\s+/);
+    for (const word of sqlWords) {
+      if (dangerousKeywords.includes(word) && word !== 'SELECT') {
+        throw new Error(`SQL 包含危险关键字: ${word}`);
+      }
     }
 
     const data = await this.dorisService.query(rule.sqlContent);

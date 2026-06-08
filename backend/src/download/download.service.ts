@@ -19,7 +19,7 @@ export class DownloadService {
     private downloadLogRepository: Repository<DownloadLog>,
   ) {}
 
-  private async fetchMetadata(reportCode: string, params: Record<string, any>) {
+  private async fetchMetadata(reportCode: string, params: Record<string, any>, maxRows?: number) {
     const report = await this.reportService.findByCode(reportCode);
     if (!report.enableDownload) {
       throw new BadRequestException('该清单不允许下载');
@@ -28,8 +28,9 @@ export class DownloadService {
     const firstPage = await this.dataQueryService.queryByReportCode(reportCode, params, 1, 1);
     const total = firstPage.total;
     if (total === 0) throw new BadRequestException('没有可下载的数据');
-    if (total > this.MAX_DOWNLOAD_ROWS) {
-      throw new BadRequestException(`数据量过大（${total} 条），请缩小查询范围（最多 ${this.MAX_DOWNLOAD_ROWS} 条）`);
+    const effectiveMaxRows = maxRows || this.MAX_DOWNLOAD_ROWS;
+    if (total > effectiveMaxRows) {
+      throw new BadRequestException(`数据量过大（${total} 条），请缩小查询范围（最多 ${effectiveMaxRows.toLocaleString()} 条）`);
     }
 
     const columns = firstPage.list.length > 0 ? Object.keys(firstPage.list[0]) : [];
@@ -65,7 +66,7 @@ export class DownloadService {
   }
 
   async downloadCsv(reportCode: string, params: Record<string, any>, userId: number, username: string, res: any): Promise<void> {
-    const { report, total, columns } = await this.fetchMetadata(reportCode, params);
+    const { report, total, columns } = await this.fetchMetadata(reportCode, params, this.MAX_CSV_ROWS);
     const fileName = `${report.reportName}_${Date.now()}.csv`;
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
@@ -89,6 +90,9 @@ export class DownloadService {
     res.end();
     await this.saveLog(userId, username, report, fileName, 'csv', total);
   }
+
+  /** CSV 导出时的最大行数限制（防止内存溢出） */
+  private readonly MAX_CSV_ROWS = 50000;
 
   /** 查询下载日志（简化分页） */
   async findLogs(page = 1, pageSize = 20) {

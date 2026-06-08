@@ -47,9 +47,10 @@ import { CommonModule } from './common/common.module';
     }),
 
     // --- 请求限流（防刷接口）---
+    // 注意：如果后期需要多实例部署，限流和 Token 黑名单需要切换到 Redis 共享状态
     ThrottlerModule.forRoot([{
       ttl: 60000,    // 每分钟
-      limit: 120,    // 最多 120 次请求（平均每秒2次）
+      limit: 60,     // 最多 60 次请求（默认，敏感接口单独设置更严格限制）
     }]),
 
     // --- 定时任务模块 ---

@@ -110,7 +110,7 @@ export default function LoginPage() {
       const res = await authApi.login(loginParams);
       // 登录成功 → 重置失败计数
       setFailCount(0);
-      setAuth(res.token, res.userInfo);
+      setAuth(res.userInfo);
       message.success('登录成功');
       navigate('/home', { replace: true });
     } catch (error: any) {

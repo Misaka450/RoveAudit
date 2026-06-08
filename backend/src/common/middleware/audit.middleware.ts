@@ -3,7 +3,11 @@ import { Request, Response, NextFunction } from 'express';
 import { AuditLogService } from '../audit-log.service';
 
 /** 需要脱敏的敏感字段名列表 */
-const SENSITIVE_FIELDS = new Set(['token', 'password', 'secret', 'authorization']);
+const SENSITIVE_FIELDS = new Set([
+  'token', 'password', 'secret', 'authorization',
+  'access_token', 'refresh_token', 'jwt', 'apikey', 'api_key',
+  'privatekey', 'private_key', 'credential',
+]);
 
 /**
  * 递归脱敏函数 - 深度遍历对象，移除所有敏感字段
