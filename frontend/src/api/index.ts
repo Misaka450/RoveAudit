@@ -6,9 +6,9 @@ import type { LoginResponse, PageResult, ReportConfig, User, Role, MenuItem, Rep
  * 认证相关 API
  */
 export const authApi = {
-  /** 登录 */
-  login: (username: string, password: string) =>
-    request.post<LoginResponse>('/auth/login', { username, password }),
+  /** 登录（支持验证码参数） */
+  login: (params: { username: string; password: string; captchaId?: string; captcha?: string }) =>
+    request.post<LoginResponse>('/auth/login', params),
 };
 
 /**

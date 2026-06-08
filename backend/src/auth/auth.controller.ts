@@ -1,10 +1,11 @@
-import { Controller, Post, Body, Res, Req } from '@nestjs/common';
+import { Controller, Post, Body, Res, Req, Get } from '@nestjs/common';
 import { Response, Request } from 'express';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { Public } from '../common/decorators/public.decorator';
 import { TokenBlacklistService } from '../common/token-blacklist.service';
+import { CaptchaService } from './captcha.service';
 
 /** Cookie 名称 - 与前端约定一致 */
 export const TOKEN_COOKIE_NAME = 'auth_token';
@@ -18,10 +19,27 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly tokenBlacklistService: TokenBlacklistService,
+    private readonly captchaService: CaptchaService,
   ) {}
 
   /**
+   * 获取图片验证码
+   * 返回 SVG 图片，captchaId 通过响应头 X-Captcha-Id 返回
+   */
+  @Get('captcha')
+  @Public()
+  @ApiOperation({ summary: '获取图片验证码' })
+  getCaptcha(@Res() res: Response) {
+    const { captchaId, svg } = this.captchaService.generate();
+    res.setHeader('X-Captcha-Id', captchaId);
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.send(svg);
+  }
+
+  /**
    * 用户登录 - 返回 JWT Token（body）并设置 HttpOnly Cookie
+   * 连续输错 2 次密码后，需要填写验证码
    */
   @Post('login')
   @Public()

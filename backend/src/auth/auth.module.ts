@@ -7,15 +7,15 @@ import { User } from '../user/entities/user.entity';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
+import { CaptchaService } from './captcha.service';
 
 /**
- * 认证模块 - 包含登录、JWT 签发与验证
+ * 认证模块 - 包含登录、JWT 签发与验证、验证码
  */
 @Module({
   imports: [
     TypeOrmModule.forFeature([User]),
     PassportModule,
-    // JWT 模块异步配置（从环境变量读取密钥和过期时间）
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -28,7 +28,7 @@ import { JwtStrategy } from './jwt.strategy';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
-  exports: [AuthService],
+  providers: [AuthService, JwtStrategy, CaptchaService],
+  exports: [AuthService, CaptchaService],
 })
 export class AuthModule {}
