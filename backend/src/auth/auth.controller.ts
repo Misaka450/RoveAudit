@@ -1,6 +1,7 @@
-import { Controller, Post, Body, Res, Req, Get } from '@nestjs/common';
+import { Controller, Post, Body, Res, Req, Get, Query } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { Response, Request } from 'express';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { Public } from '../common/decorators/public.decorator';
@@ -38,11 +39,26 @@ export class AuthController {
   }
 
   /**
+   * 查询指定账号的登录失败次数（用于页面刷新后同步状态）
+   */
+  @Get('fail-count')
+  @Public()
+  @ApiOperation({ summary: '查询账号登录失败次数' })
+  @ApiQuery({ name: 'username', required: true, description: '用户账号' })
+  getFailCount(@Query('username') username: string) {
+    const failCount = this.authService.getFailCount(username);
+    const remain = Math.max(0, 2 - failCount);
+    return { failCount, remain };
+  }
+
+  /**
    * 用户登录 - 返回 JWT Token（body）并设置 HttpOnly Cookie
    * 连续输错 2 次密码后，需要填写验证码
+   * 限流：每分钟最多 10 次登录尝试（防暴力破解）
    */
   @Post('login')
   @Public()
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiOperation({ summary: '用户登录' })
   async login(@Body() loginDto: LoginDto, @Res({ passthrough: true }) res: Response) {
     const result = await this.authService.login(loginDto);

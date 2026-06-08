@@ -73,11 +73,17 @@ export class AuthService {
     const needCaptcha = this.isCaptchaRequired(username);
     if (needCaptcha) {
       if (!captchaId || !captcha) {
-        throw new UnauthorizedException('请输入验证码');
+        throw new UnauthorizedException({
+          message: '请输入验证码',
+          data: { failCount: this.getFailCount(username) },
+        });
       }
       const valid = this.captchaService.verify(captchaId, captcha);
       if (!valid) {
-        throw new BadRequestException('验证码错误，请重新输入');
+        throw new BadRequestException({
+          message: '验证码错误，请重新输入',
+          data: { failCount: this.getFailCount(username) },
+        });
       }
     }
 
@@ -90,11 +96,16 @@ export class AuthService {
     if (!user) {
       this.recordFail(username);
       const remain = this.getRemainAttempts(username);
-      throw new UnauthorizedException(
-        remain > 0
-          ? `账号或密码错误，再输错 ${remain} 次将需要验证码`
-          : '账号或密码错误',
-      );
+      throw new UnauthorizedException({
+        message:
+          remain > 0
+            ? `账号或密码错误，再输错 ${remain} 次将需要验证码`
+            : '账号或密码错误',
+        data: {
+          failCount: this.getFailCount(username),
+          remain,
+        },
+      });
     }
 
     // 3. 验证密码
@@ -102,11 +113,16 @@ export class AuthService {
     if (!isPasswordValid) {
       this.recordFail(username);
       const remain = this.getRemainAttempts(username);
-      throw new UnauthorizedException(
-        remain > 0
-          ? `账号或密码错误，再输错 ${remain} 次将需要验证码`
-          : '账号或密码错误',
-      );
+      throw new UnauthorizedException({
+        message:
+          remain > 0
+            ? `账号或密码错误，再输错 ${remain} 次将需要验证码`
+            : '账号或密码错误',
+        data: {
+          failCount: this.getFailCount(username),
+          remain,
+        },
+      });
     }
 
     // 4. 登录成功 — 清零失败计数

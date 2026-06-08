@@ -28,14 +28,24 @@ export class AllExceptionsFilter implements ExceptionFilter {
     // 确定状态码和错误信息
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let message = '服务器内部错误';
+    let extraData: any = null;
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
       const res = exception.getResponse();
-      message = typeof res === 'string' ? res : (res as any).message || exception.message;
-      // class-validator 校验错误时返回的是数组，取第一个
-      if (Array.isArray(message)) {
-        message = message[0];
+      if (typeof res === 'string') {
+        message = res;
+      } else {
+        const resObj = res as any;
+        message = resObj.message || exception.message;
+        // class-validator 校验错误时返回的是数组，取第一个
+        if (Array.isArray(message)) {
+          message = message[0];
+        }
+        // 透传额外数据（如 failCount）
+        if (resObj.data !== undefined) {
+          extraData = resObj.data;
+        }
       }
     } else if (exception instanceof Error) {
       message = exception.message;
@@ -53,11 +63,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
       }
     }
 
-    // 统一响应格式
+    // 统一响应格式（透传额外数据）
     response.status(status).json({
       code: status,
       message,
-      data: null,
+      data: extraData,
       timestamp: new Date().toISOString(),
     });
   }

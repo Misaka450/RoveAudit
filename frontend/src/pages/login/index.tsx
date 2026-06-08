@@ -13,14 +13,16 @@ const CAPTCHA_THRESHOLD = 2;
 /**
  * 登录页面 - 已登录用户自动跳转首页
  * 安全策略：连续输错密码 2 次后，需填写图片验证码
+ * 失败次数以后端为准，刷新页面后自动同步
  */
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
+  const [form] = Form.useForm();
   const navigate = useNavigate();
   const setAuth = useAuthStore((s) => s.setAuth);
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
 
-  /** 连续失败次数 */
+  /** 连续失败次数（以后端返回为准） */
   const [failCount, setFailCount] = useState(0);
   /** 验证码图片 URL */
   const [captchaUrl, setCaptchaUrl] = useState<string | null>(null);
@@ -61,6 +63,41 @@ export default function LoginPage() {
     }
   }, [failCount, loadCaptcha]);
 
+  /**
+   * 查询后端失败次数（用于页面刷新后同步）
+   */
+  const syncFailCount = useCallback(async (username: string) => {
+    if (!username) return;
+    try {
+      const res = await fetch(`/api/auth/fail-count?username=${encodeURIComponent(username)}`, {
+        credentials: 'include',
+      });
+      const body = await res.json();
+      if (body?.data?.failCount !== undefined) {
+        setFailCount(body.data.failCount);
+      }
+    } catch {
+      // 查询失败不影响登录流程，静默处理
+    }
+  }, []);
+
+  /**
+   * 当账号变化时重置状态并从后端同步
+   */
+  const handleValuesChange = useCallback(
+    (changedValues: any) => {
+      if (changedValues.username !== undefined) {
+        // 账号变了 → 重置失败计数和验证码
+        setFailCount(0);
+        setCaptchaUrl(null);
+        setCaptchaId(null);
+        // 异步查询后端该账号的失败次数
+        syncFailCount(changedValues.username);
+      }
+    },
+    [syncFailCount],
+  );
+
   const handleLogin = async (values: { username: string; password: string; captcha?: string }) => {
     setLoading(true);
     try {
@@ -71,21 +108,23 @@ export default function LoginPage() {
         loginParams.captcha = values.captcha || '';
       }
       const res = await authApi.login(loginParams);
+      // 登录成功 → 重置失败计数
+      setFailCount(0);
       setAuth(res.token, res.userInfo);
       message.success('登录成功');
       navigate('/home', { replace: true });
     } catch (error: any) {
-      const msg = error.response?.data?.message || '登录失败';
+      const responseData = error.response?.data;
+      const msg = responseData?.message || '登录失败';
       message.error(msg);
 
-      // 更新失败次数
-      const newCount = failCount + 1;
-      setFailCount(newCount);
-
-      // 如果刚达到阈值，验证码会自动通过 useEffect 加载
-      // 如果已经需要验证码，刷新一张新的
-      if (newCount > CAPTCHA_THRESHOLD) {
-        loadCaptcha();
+      // 优先使用后端返回的 failCount（保证前后端同步）
+      const backendFailCount = responseData?.data?.failCount;
+      if (backendFailCount !== undefined) {
+        setFailCount(backendFailCount);
+      } else {
+        // 降级：本地计数（后端未返回时兜底）
+        setFailCount((prev) => prev + 1);
       }
     } finally {
       setLoading(false);
@@ -106,7 +145,7 @@ export default function LoginPage() {
           <Text type="secondary">运营商内部数据管理系统</Text>
         </div>
 
-        <Form onFinish={handleLogin} size="large" autoComplete="off">
+        <Form form={form} onFinish={handleLogin} onValuesChange={handleValuesChange} size="large" autoComplete="off">
           <Form.Item
             name="username"
             rules={[{ required: true, message: '请输入账号' }]}

@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import * as crypto from 'node:crypto';
 import * as svgCaptcha from 'svg-captcha';
 
 /**
@@ -43,8 +44,8 @@ export class CaptchaService {
       charPreset: 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789', // 排除易混淆字符 0oO1lI
     });
 
-    // 用随机字符串作为 captchaId
-    const captchaId = this.generateId();
+    // 用 UUID 作为 captchaId（加密安全随机）
+    const captchaId = crypto.randomUUID();
     const answer = captcha.text.toLowerCase();
 
     this.store.set(captchaId, answer);
@@ -70,18 +71,6 @@ export class CaptchaService {
     this.timestamps.delete(captchaId);
 
     return stored === answer.toLowerCase();
-  }
-
-  /**
-   * 生成随机 ID
-   */
-  private generateId(): string {
-    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let result = '';
-    for (let i = 0; i < 32; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return result;
   }
 
   /**
