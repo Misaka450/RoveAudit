@@ -29,8 +29,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // 通知后端将 Token 加入黑名单
     try {
       await request.post('/auth/logout');
-    } catch {
+    } catch (e) {
       // 网络错误时仍然清除本地状态
+      console.error('登出请求失败:', e);
     }
     localStorage.removeItem('userInfo');
     set({ userInfo: null });

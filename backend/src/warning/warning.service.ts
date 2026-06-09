@@ -122,26 +122,32 @@ export class WarningService {
 
   /**
    * 执行单条检测规则的核心逻辑
-   * 安全措施：禁止执行多语句 SQL（防止 SQL 注入攻击）
+   * 安全措施：
+   * 1. 只允许 SELECT 查询
+   * 2. 禁止多语句执行（分号分隔）
+   * 3. 禁止危险关键字
+   * 4. 建议配合 Doris 只读账号使用，从数据库层面限制写操作
    */
   private async runDetection(rule: WarningRule) {
-    const trimmedSql = rule.sqlContent.trim().toUpperCase();
+    const sqlContent = rule.sqlContent.trim();
 
-    // 安全检查：只允许 SELECT 查询
-    if (!trimmedSql.startsWith('SELECT')) {
+    // 安全检查：只允许 SELECT 查询（去除前导空白和注释后判断）
+    const firstKeyword = sqlContent.replace(/\/\*[\s\S]*?\*\//g, '').replace(/--.*$/gm, '').trim().toUpperCase();
+    if (!firstKeyword.startsWith('SELECT')) {
       throw new Error('只允许执行 SELECT 查询');
     }
 
-    // 安全检查：禁止多语句执行（防止类似 "; DROP TABLE" 的注入）
-    if (rule.sqlContent.includes(';') && !rule.sqlContent.trim().endsWith(';')) {
-      throw new Error('禁止执行多语句 SQL');
+    // 安全检查：禁止分号（防止多语句执行，如 "SELECT 1; DROP TABLE x;"）
+    if (sqlContent.includes(';')) {
+      throw new Error('禁止执行多语句 SQL（不允许包含分号）');
     }
 
-    // 安全检查：禁止危险关键字
-    const dangerousKeywords = ['DROP', 'DELETE', 'UPDATE', 'INSERT', 'ALTER', 'CREATE', 'EXEC', 'TRUNCATE'];
-    const sqlWords = rule.sqlContent.toUpperCase().split(/\s+/);
+    // 安全检查：禁止危险关键字（在去除注释后的 SQL 中检查）
+    const cleanSql = sqlContent.replace(/\/\*[\s\S]*?\*\//g, '').replace(/--.*$/gm, '');
+    const dangerousKeywords = ['DROP', 'DELETE', 'UPDATE', 'INSERT', 'ALTER', 'CREATE', 'EXEC', 'TRUNCATE', 'GRANT', 'REVOKE'];
+    const sqlWords = cleanSql.toUpperCase().split(/[\s,()]+/);
     for (const word of sqlWords) {
-      if (dangerousKeywords.includes(word) && word !== 'SELECT') {
+      if (dangerousKeywords.includes(word)) {
         throw new Error(`SQL 包含危险关键字: ${word}`);
       }
     }

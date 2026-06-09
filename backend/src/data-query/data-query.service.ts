@@ -37,8 +37,15 @@ export class DataQueryService {
           continue;
         }
         // 校验参数值：过滤 SQL 注入特征（仅限字符串类型）
-        if (typeof value === 'string' && /;\s*(DROP|DELETE|UPDATE|INSERT|ALTER|CREATE|EXEC|UNION\s+SELECT)/i.test(value)) {
-          throw new BadRequestException(`参数 "${key}" 包含非法内容`);
+        // 注意：此为辅助防护，核心防护依赖参数化查询 + Doris 只读账号
+        if (typeof value === 'string') {
+          const normalized = value.toUpperCase().replace(/\/\*[\s\S]*?\*\//g, '').replace(/--.*$/gm, '');
+          if (/;\s*(DROP|DELETE|UPDATE|INSERT|ALTER|CREATE|EXEC|TRUNCATE|GRANT|REVOKE)/i.test(normalized)) {
+            throw new BadRequestException(`参数 "${key}" 包含非法内容`);
+          }
+          if (/UNION\s+(ALL\s+)?SELECT/i.test(normalized)) {
+            throw new BadRequestException(`参数 "${key}" 包含非法内容`);
+          }
         }
         const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const regex = new RegExp(`\\{\\{${escapedKey}\\}\\}`, 'g');

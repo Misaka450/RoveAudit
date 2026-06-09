@@ -37,10 +37,10 @@ export default function AnalysisPage() {
     if (!selectedReport) return;
     setLoading(true);
 
-    // 同时加载图表配置和清单数据（取全部数据用于图表渲染）
+    // 同时加载图表配置和清单数据（取前 500 条用于图表渲染，避免一次拉取过多数据）
     Promise.all([
       reportChartApi.list(selectedReport),
-      dataQueryApi.query(selectedReport, { pageSize: 10000 }).catch(() => null),
+      dataQueryApi.query(selectedReport, { pageSize: 500 }).catch(() => null),
     ]).then(([chartConfigs, queryResult]) => {
       setCharts(chartConfigs);
       // 将查询结果转换为 chartData 格式：按维度列名分组存储

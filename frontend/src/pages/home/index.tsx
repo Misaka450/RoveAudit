@@ -40,8 +40,9 @@ export default function HomePage() {
     try {
       const visits = JSON.parse(localStorage.getItem('recentVisits') || '[]') as string[];
       setRecentVisits(visits);
-    } catch {
+    } catch (e) {
       setRecentVisits([]);
+      console.error('读取最近访问记录失败:', e);
     }
 
     return () => abortController.abort();

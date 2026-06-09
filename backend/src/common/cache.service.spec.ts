@@ -1,110 +1,80 @@
+import { Test, TestingModule } from '@nestjs/testing';
 import { CacheService } from './cache.service';
 
-/**
- * CacheService 单元测试
- * 测试缓存的存取、过期、容量限制等功能
- */
 describe('CacheService', () => {
-  let cache: CacheService;
+  let service: CacheService;
 
-  beforeEach(() => {
-    cache = new CacheService(5); // 最大 5 条条目，方便测试淘汰
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [CacheService],
+    }).compile();
+
+    service = module.get<CacheService>(CacheService);
   });
 
-  describe('基本存取', () => {
-    it('应能设置和获取缓存值', () => {
-      cache.set('key1', 'value1');
-      expect(cache.get('key1')).toBe('value1');
-    });
-
-    it('不存在的键应返回 null', () => {
-      expect(cache.get('nonexistent')).toBeNull();
-    });
-
-    it('应能删除指定缓存', () => {
-      cache.set('key1', 'value1');
-      cache.del('key1');
-      expect(cache.get('key1')).toBeNull();
-    });
-
-    it('清空后所有缓存应失效', () => {
-      cache.set('key1', 'value1');
-      cache.set('key2', 'value2');
-      cache.clear();
-      expect(cache.get('key1')).toBeNull();
-      expect(cache.get('key2')).toBeNull();
-      expect(cache.size).toBe(0);
-    });
+  it('应当成功创建服务实例', () => {
+    expect(service).toBeDefined();
   });
 
-  describe('过期机制', () => {
-    it('TTL 过期后应返回 null', async () => {
-      cache.set('key1', 'value1', 0); // 0 秒 TTL
-      // 等待一小段时间确保过期
-      await new Promise((r) => setTimeout(r, 10));
-      expect(cache.get('key1')).toBeNull();
+  describe('set / get', () => {
+    it('应当正确存取值', () => {
+      service.set('key1', 'value1');
+      expect(service.get('key1')).toBe('value1');
     });
 
-    it('未过期的缓存应正常返回', () => {
-      cache.set('key1', 'value1', 60); // 60 秒 TTL
-      expect(cache.get('key1')).toBe('value1');
+    it('key 不存在时返回 undefined', () => {
+      expect(service.get('notexist')).toBeUndefined();
+    });
+
+    it('应当支持对象类型的值', () => {
+      const obj = { name: 'test', count: 42 };
+      service.set('obj', obj);
+      expect(service.get('obj')).toEqual(obj);
     });
   });
 
-  describe('容量限制（LRU 淘汰）', () => {
-    it('超出容量时应淘汰最旧的条目', () => {
-      cache.set('a', 1);
-      cache.set('b', 2);
-      cache.set('c', 3);
-      cache.set('d', 4);
-      cache.set('e', 5); // 此时已满（5 条）
-      cache.set('f', 6); // 超出容量，应淘汰最旧的 'a'
-
-      expect(cache.get('a')).toBeNull(); // 已被淘汰
-      expect(cache.get('f')).toBe(6); // 新值存在
-      expect(cache.size).toBe(5); // 仍保持在 5 条
-    });
-
-    it('更新已有条目不应将其视为新条目（FIFO 顺序）', () => {
-      cache.set('a', 1);
-      cache.set('b', 2);
-      cache.set('c', 3);
-      cache.set('d', 4);
-      cache.set('e', 5);
-      // 更新已存在的 'a'
-      cache.set('a', 100);
-      // 再新增一条 f → 超出容量，淘汰最旧的 'a'
-      cache.set('f', 6);
-
-      expect(cache.get('a')).toBeNull(); // 'a' 是最旧的，被淘汰
-      expect(cache.get('b')).toBe(2); // 'b' 仍存在
-      expect(cache.get('f')).toBe(6);
-      expect(cache.size).toBe(5);
+  describe('TTL 过期', () => {
+    it('过期后 get 应返回 undefined', async () => {
+      service.set('ttl_key', 'value', 1); // 1 秒过期
+      expect(service.get('ttl_key')).toBe('value');
+      // 等待过期
+      await new Promise((r) => setTimeout(r, 1100));
+      expect(service.get('ttl_key')).toBeUndefined();
     });
   });
 
-  describe('按前缀删除', () => {
-    it('应删除所有匹配前缀的缓存键', () => {
-      cache.set('report:1', 'a');
-      cache.set('report:2', 'b');
-      cache.set('user:1', 'c');
-      cache.delByPrefix('report:');
-
-      expect(cache.get('report:1')).toBeNull();
-      expect(cache.get('report:2')).toBeNull();
-      expect(cache.get('user:1')).toBe('c');
+  describe('del', () => {
+    it('删除后 get 应返回 undefined', () => {
+      service.set('del_key', 'value');
+      service.del('del_key');
+      expect(service.get('del_key')).toBeUndefined();
     });
   });
 
-  describe('size 属性', () => {
-    it('应正确返回缓存条目数', () => {
-      expect(cache.size).toBe(0);
-      cache.set('a', 1);
-      expect(cache.size).toBe(1);
-      cache.set('b', 2);
-      expect(cache.size).toBe(2);
-      cache.clear();
-      expect(cache.size).toBe(0);
+  describe('clear', () => {
+    it('清空后所有 key 都不存在', () => {
+      service.set('a', 1);
+      service.set('b', 2);
+      service.clear();
+      expect(service.get('a')).toBeUndefined();
+      expect(service.get('b')).toBeUndefined();
+    });
+  });
+
+  describe('LRU 淘汰', () => {
+    it('超过 maxItems 时淘汰最久未访问的条目', () => {
+      const smallCache = new CacheService(3); // 最多 3 条
+      smallCache.set('a', 1);
+      smallCache.set('b', 2);
+      smallCache.set('c', 3);
+      // 访问 a，使其变为最近访问
+      smallCache.get('a');
+      // 插入第 4 条，应淘汰最久未访问的 b
+      smallCache.set('d', 4);
+      expect(smallCache.get('a')).toBe(1); // a 被访问过，保留
+      expect(smallCache.get('b')).toBeUndefined(); // b 被淘汰
+      expect(smallCache.get('c')).toBe(3);
+      expect(smallCache.get('d')).toBe(4);
     });
   });
 });

@@ -47,9 +47,10 @@ export default function ReportChartConfig({ reportCode, visible }: Props) {
       }
       setModalVisible(false);
       // reload
-      reportChartApi.list(reportCode).then(setCharts).catch(() => {});
-    } catch {
+      reportChartApi.list(reportCode).then(setCharts).catch((e) => console.error('刷新图表列表失败:', e));
+    } catch (e) {
       message.error('操作失败');
+      console.error('保存图表配置失败:', e);
     }
   };
 
@@ -57,9 +58,10 @@ export default function ReportChartConfig({ reportCode, visible }: Props) {
     try {
       await reportChartApi.remove(id);
       message.success('图表已删除');
-      reportChartApi.list(reportCode).then(setCharts).catch(() => {});
-    } catch {
+      reportChartApi.list(reportCode).then(setCharts).catch((e) => console.error('刷新图表列表失败:', e));
+    } catch (e) {
       message.error('操作失败');
+      console.error('删除图表配置失败:', e);
     }
   };
 

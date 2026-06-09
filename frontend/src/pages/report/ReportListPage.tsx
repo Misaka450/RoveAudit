@@ -88,7 +88,7 @@ export default function ReportListPage() {
       const visits = JSON.parse(localStorage.getItem('recentVisits') || '[]') as string[];
       const updated = [reportCode, ...visits.filter((v) => v !== reportCode)].slice(0, 10);
       localStorage.setItem('recentVisits', JSON.stringify(updated));
-    } catch { /* */ }
+    } catch (e) { console.error('保存最近访问记录失败:', e); }
     return () => abortController.abort();
   }, [reportCode]);
 
@@ -169,8 +169,9 @@ export default function ReportListPage() {
       } else {
         setColumns([]);
       }
-    } catch {
+    } catch (e) {
       // 静默失败，不弹提示避免死循环刷屏
+      console.error('加载数据失败:', e);
     } finally {
       setLoading(false);
     }

@@ -82,8 +82,9 @@ export default function WarningRulesPage() {
       const result = await warningApi.executeRule(id);
       message.success(`执行完成，发现 ${result.count} 条异常`);
       loadRules();
-    } catch {
+    } catch (e) {
       message.error('执行失败');
+      console.error('执行规则失败:', e);
     }
   };
 

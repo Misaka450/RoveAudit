@@ -246,7 +246,9 @@ ON CONFLICT DO NOTHING;
 INSERT INTO sys_permission (permission_name, permission_key, description) VALUES
 ('查看', 'report:view', '查看清单数据'),
 ('下载', 'report:download', '下载清单数据'),
-('导出', 'report:export', '导出清单数据')
+('导出', 'report:export', '导出清单数据'),
+('删除审计日志', 'audit:delete', '删除单条审计日志'),
+('清理审计日志', 'audit:clean', '批量清理过期审计日志')
 ON CONFLICT DO NOTHING;
 
 -- 插入默认角色（超级管理员）

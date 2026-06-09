@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Between } from 'typeorm';
 import * as ExcelJS from 'exceljs';
 import { DataQueryService } from '../data-query/data-query.service';
 import { ReportService } from '../report/report.service';
@@ -9,8 +9,12 @@ import { DownloadLog } from './entities/download-log.entity';
 
 @Injectable()
 export class DownloadService {
+  /** 分批查询大小 */
   private readonly BATCH_SIZE = 5000;
+  /** Excel 导出最大行数限制 */
   private readonly MAX_DOWNLOAD_ROWS = 100000;
+  /** CSV 导出最大行数限制（比 Excel 更小，防止内存溢出） */
+  private readonly MAX_CSV_ROWS = 50000;
 
   constructor(
     private dataQueryService: DataQueryService,
@@ -91,9 +95,6 @@ export class DownloadService {
     await this.saveLog(userId, username, report, fileName, 'csv', total);
   }
 
-  /** CSV 导出时的最大行数限制（防止内存溢出） */
-  private readonly MAX_CSV_ROWS = 50000;
-
   /** 查询下载日志（简化分页） */
   async findLogs(page = 1, pageSize = 20) {
     const [list, total] = await this.downloadLogRepository.findAndCount({
@@ -118,25 +119,20 @@ export class DownloadService {
     return this.downloadLogRepository.delete(id);
   }
 
-  /** 下载统计：今日/本月下载次数 */
-  async getStats(): Promise<{ todayCount: number; monthCount: number; totalDownloads: number }> {
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const monthStart = new Date(todayStart.getFullYear(), todayStart.getMonth(), 1);
+  /** 下载统计（今日/本月下载次数） */
+  async getStats() {
+    const now = new Date();
+    // 今日零点
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    // 本月1号
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const todayCount = await this.downloadLogRepository
-      .createQueryBuilder('log')
-      .where('log.download_time >= :today', { today: todayStart })
-      .getCount();
+    const [todayResult, monthResult] = await Promise.all([
+      this.downloadLogRepository.count({ where: { downloadTime: Between(todayStart, now) } }),
+      this.downloadLogRepository.count({ where: { downloadTime: Between(monthStart, now) } }),
+    ]);
 
-    const monthCount = await this.downloadLogRepository
-      .createQueryBuilder('log')
-      .where('log.download_time >= :month', { month: monthStart })
-      .getCount();
-
-    const totalDownloads = await this.downloadLogRepository.count();
-
-    return { todayCount, monthCount, totalDownloads };
+    return { todayCount: todayResult, monthCount: monthResult };
   }
 
   private async saveLog(userId: number, username: string, report: Report, fileName: string, fileType: string, dataCount: number) {

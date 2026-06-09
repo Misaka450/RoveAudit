@@ -15,8 +15,8 @@ export const authApi = {
  * 用户管理 API
  */
 export const userApi = {
-  /** 获取用户列表 */
-  list: (keyword?: string, page?: number, pageSize?: number): Promise<any> =>
+  /** 获取用户列表（支持分页） */
+  list: (keyword?: string, page?: number, pageSize?: number): Promise<PageResult<User>> =>
     request.get('/users', { params: { keyword, page, pageSize } }),
   /** 创建用户 */
   create: (data: Partial<User>) => request.post('/users', data),
@@ -28,9 +28,9 @@ export const userApi = {
   /** 删除用户 */
   remove: (id: number) => request.delete(`/users/${id}`),
   /** 批量导入 */
-  batchImport: (data: any) => request.post('/users/batch-import', data),
+  batchImport: (data: Partial<User>[]) => request.post('/users/batch-import', data),
   /** 获取导入模板 */
-  template: (): Promise<any[]> => request.get('/users/template'),
+  template: (): Promise<Partial<User>[]> => request.get('/users/template'),
 };
 
 /**
@@ -40,9 +40,9 @@ export const roleApi = {
   /** 获取角色列表 */
   list: (): Promise<Role[]> => request.get('/roles'),
   /** 创建角色 */
-  create: (data: any) => request.post('/roles', data),
+  create: (data: Partial<Role>) => request.post('/roles', data),
   /** 更新角色 */
-  update: (id: number, data: any) => request.put(`/roles/${id}`, data),
+  update: (id: number, data: Partial<Role>) => request.put(`/roles/${id}`, data),
   /** 删除角色 */
   remove: (id: number) => request.delete(`/roles/${id}`),
 };
@@ -52,13 +52,13 @@ export const roleApi = {
  */
 export const menuApi = {
   /** 获取菜单树 */
-  tree: (): Promise<any[]> => request.get('/menus/tree'),
+  tree: (): Promise<MenuItem[]> => request.get('/menus/tree'),
   /** 获取菜单列表 */
   list: (): Promise<MenuItem[]> => request.get('/menus'),
   /** 创建菜单 */
-  create: (data: any) => request.post('/menus', data),
+  create: (data: Partial<MenuItem>) => request.post('/menus', data),
   /** 更新菜单 */
-  update: (id: number, data: any) => request.put(`/menus/${id}`, data),
+  update: (id: number, data: Partial<MenuItem>) => request.put(`/menus/${id}`, data),
   /** 删除菜单 */
   remove: (id: number) => request.delete(`/menus/${id}`),
 };
@@ -76,11 +76,11 @@ export const reportApi = {
   listAdmin: (keyword?: string): Promise<ReportConfig[]> =>
     request.get('/reports', { params: { keyword } }),
   /** 获取清单详情 */
-  detail: (id: number) => request.get(`/reports/${id}`),
+  detail: (id: number): Promise<ReportConfig> => request.get(`/reports/${id}`),
   /** 创建清单 */
-  create: (data: any) => request.post('/reports', data),
+  create: (data: Partial<ReportConfig>) => request.post('/reports', data),
   /** 更新清单 */
-  update: (id: number, data: any) => request.put(`/reports/${id}`, data),
+  update: (id: number, data: Partial<ReportConfig>) => request.put(`/reports/${id}`, data),
   /** 删除清单 */
   remove: (id: number) => request.delete(`/reports/${id}`),
 };
@@ -107,9 +107,9 @@ export const reportChartApi = {
   list: (reportCode: string): Promise<ReportChartConfig[]> =>
     request.get(`/report-charts/${reportCode}`),
   /** 创建图表配置 */
-  create: (data: any) => request.post('/report-charts', data),
+  create: (data: Partial<ReportChartConfig>) => request.post('/report-charts', data),
   /** 更新图表配置 */
-  update: (id: number, data: any) => request.put(`/report-charts/${id}`, data),
+  update: (id: number, data: Partial<ReportChartConfig>) => request.put(`/report-charts/${id}`, data),
   /** 删除图表配置 */
   remove: (id: number) => request.delete(`/report-charts/${id}`),
 };
@@ -213,23 +213,9 @@ export const downloadLogApi = {
     request.get('/download/logs', { params: { page, pageSize } }),
   /** 删除下载日志 */
   remove: (id: number) => request.delete(`/download/logs/${id}`),
-  /** 获取下载统计（首页展示） */
-  stats: async (): Promise<{ todayCount: number; monthCount: number }> => {
-    const res = await request.get('/download/logs', { params: { pageSize: 10000 } });
-    const logs: any[] = res.list || [];
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
-
-    let todayCount = 0;
-    let monthCount = 0;
-    for (const log of logs) {
-      const t = new Date(log.downloadTime).getTime();
-      if (t >= todayStart) todayCount++;
-      if (t >= monthStart) monthCount++;
-    }
-    return { todayCount, monthCount };
-  },
+  /** 获取下载统计（后端计算，高效准确） */
+  stats: (): Promise<{ todayCount: number; monthCount: number }> =>
+    request.get('/download/stats'),
 };
 
 /**

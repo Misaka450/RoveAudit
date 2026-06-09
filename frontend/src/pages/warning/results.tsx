@@ -46,8 +46,9 @@ export default function WarningResultsPage() {
     try {
       const data = await warningApi.getResults();
       setResults(data || []);
-    } catch {
+    } catch (e) {
       setResults([]);
+      console.error('加载预警结果失败:', e);
     } finally {
       setLoading(false);
     }

@@ -30,8 +30,10 @@ export class AuditLogService {
     const effectivePageSize = Math.min(pageSize, 100);
     const where: any[] = [];
     if (keyword) {
-      where.push({ username: Like(`%${keyword}%`) });
-      where.push({ action: Like(`%${keyword}%`) });
+      // 转义 LIKE 通配符，防止用户输入的 % 和 _ 被当作通配符
+      const escaped = keyword.replace(/[%_]/g, '\\$&');
+      where.push({ username: Like(`%${escaped}%`) });
+      where.push({ action: Like(`%${escaped}%`) });
     }
 
     const [list, total] = await this.auditLogRepository.findAndCount({

@@ -16,8 +16,9 @@ export default function DownloadLogPage() {
       const data = await downloadLogApi.list(page, pageSize);
       setLogs(data.list || []);
       setTotal(data.total || 0);
-    } catch {
+    } catch (e) {
       setLogs([]);
+      console.error('加载下载日志失败:', e);
     } finally {
       setLoading(false);
     }
@@ -30,7 +31,7 @@ export default function DownloadLogPage() {
       await downloadLogApi.remove(id);
       message.success('已删除');
       loadLogs();
-    } catch { message.error('删除失败'); }
+    } catch (e) { message.error('删除失败'); console.error('删除下载日志失败:', e); }
   };
 
   const columns = [

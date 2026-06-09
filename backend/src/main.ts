@@ -66,23 +66,28 @@ async function bootstrap() {
   // 注册全局响应拦截器（统一成功响应格式）
   app.useGlobalInterceptors(new TransformInterceptor());
 
-  // 允许跨域（完全开放，便于内网访问）
+  // 允许跨域（限制允许的来源，生产环境应设置具体域名）
+  const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:5173';
   app.enableCors({
-    origin: true,
+    origin: process.env.NODE_ENV === 'production'
+      ? corsOrigin.split(',').map(s => s.trim())  // 生产环境：仅允许配置的域名
+      : true,                                       // 开发环境：允许所有来源
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   });
 
-  // 配置 Swagger API 文档
-  const config = new DocumentBuilder()
-    .setTitle('运营商数据门户平台 API')
-    .setDescription('Data Portal - 数据清单查询、下载、分析服务')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api-docs', app, document);
+  // 配置 Swagger API 文档（仅开发环境启用，生产环境关闭避免暴露接口信息）
+  if (process.env.NODE_ENV !== 'production') {
+    const config = new DocumentBuilder()
+      .setTitle('运营商数据门户平台 API')
+      .setDescription('Data Portal - 数据清单查询、下载、分析服务')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api-docs', app, document);
+  }
 
   // 启动服务
   const port = process.env.APP_PORT || 3000;

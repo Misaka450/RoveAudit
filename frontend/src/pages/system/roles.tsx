@@ -15,7 +15,7 @@ export default function RolePage() {
   const [menuTree, setMenuTree] = useState<any[]>([]);
   const [form] = Form.useForm();
 
-  const loadRoles = async () => { setLoading(true); try { setRoles(await roleApi.list()); } catch { /* */ } finally { setLoading(false); } };
+  const loadRoles = async () => { setLoading(true); try { setRoles(await roleApi.list()); } catch (e) { console.error('加载角色失败:', e); } finally { setLoading(false); } };
   const loadMenus = async () => {
     try {
       const data = await menuApi.list();
@@ -23,7 +23,7 @@ export default function RolePage() {
         title: m.menuName, key: m.id,
         children: data.filter((c: any) => c.parentId === m.id).map((c: any) => ({ title: c.menuName, key: c.id })),
       })));
-    } catch { /* */ }
+    } catch (e) { console.error('加载菜单失败:', e); }
   };
 
   useEffect(() => { loadRoles(); loadMenus(); }, []);
@@ -40,7 +40,7 @@ export default function RolePage() {
       if (editingRole) { await roleApi.update(editingRole.id, values); message.success('更新成功'); }
       else { await roleApi.create(values); message.success('创建成功'); }
       setModalVisible(false); loadRoles();
-    } catch { /* */ }
+    } catch (e) { console.error('保存角色失败:', e); }
   };
   const handleDelete = async (id: number) => { await roleApi.remove(id); message.success('已删除'); loadRoles(); };
 

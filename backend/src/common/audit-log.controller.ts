@@ -1,6 +1,7 @@
 import { Controller, Get, Delete, Query, Param } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { AuditLogService } from './audit-log.service';
+import { Permission } from './decorators/permission.decorator';
 
 @ApiTags('审计日志')
 @Controller('audit-log')
@@ -21,12 +22,14 @@ export class AuditLogController {
   }
 
   @Delete(':id')
+  @Permission('audit:delete')
   @ApiOperation({ summary: '删除审计日志' })
   async remove(@Param('id') id: number) {
     return this.auditLogService.remove(id);
   }
 
   @Delete()
+  @Permission('audit:clean')
   @ApiOperation({ summary: '清理指定天数前的日志' })
   @ApiQuery({ name: 'days', description: '保留最近N天' })
   async clean(@Query('days') days: number) {

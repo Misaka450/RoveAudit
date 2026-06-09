@@ -29,31 +29,17 @@ export class UserController {
     return this.userService.findAll(keyword, page ? +page : undefined, pageSize ? +pageSize : undefined);
   }
 
-  @Get(':id')
-  @ApiOperation({ summary: '查询用户详情' })
-  findOne(@Param('id') id: number) {
-    return this.userService.findOne(id);
+  /** 获取用户导入模板（返回示例数据）— 必须放在 :id 路由之前，否则 "template" 会被当作 id */
+  @Get('template')
+  @ApiOperation({ summary: '获取用户导入模板（返回示例数据）' })
+  getTemplate() {
+    return [
+      { username: '请输入用户名', realName: '请输入姓名', department: '请输入部门', phone: '请输入手机号', roleNames: '普通用户', password: '请填写密码' },
+      { username: '请输入用户名', realName: '请输入姓名', department: '请输入部门', phone: '请输入手机号', roleNames: '普通用户', password: '请填写密码' },
+    ];
   }
 
-  @Post()
-  @ApiOperation({ summary: '创建用户' })
-  create(@Body() dto: CreateUserDto) {
-    return this.userService.create(dto);
-  }
-
-  @Put(':id')
-  @ApiOperation({ summary: '更新用户' })
-  update(@Param('id') id: number, @Body() dto: UpdateUserDto) {
-    return this.userService.update(id, dto);
-  }
-
-  @Put(':id/reset-password')
-  @ApiOperation({ summary: '重置密码' })
-  resetPassword(@Param('id') id: number, @Body('password') password: string) {
-    return this.userService.resetPassword(id, password);
-  }
-
-  /** 批量导入用户（限制最多 500 行） */
+  /** 批量导入用户（限制最多 500 行）— 必须放在 :id 路由之前 */
   @Post('batch-import')
   @ApiOperation({ summary: '批量导入用户（Excel，最多500条）' })
   batchImport(@Body() data: ImportUserRowDto[]) {
@@ -80,13 +66,28 @@ export class UserController {
     return this.userService.batchImport(data);
   }
 
-  @Get('template')
-  @ApiOperation({ summary: '获取用户导入模板（返回示例数据）' })
-  getTemplate() {
-    return [
-      { username: '请输入用户名', realName: '请输入姓名', department: '请输入部门', phone: '请输入手机号', roleNames: '普通用户', password: '请填写密码' },
-      { username: '请输入用户名', realName: '请输入姓名', department: '请输入部门', phone: '请输入手机号', roleNames: '普通用户', password: '请填写密码' },
-    ];
+  @Get(':id')
+  @ApiOperation({ summary: '查询用户详情' })
+  findOne(@Param('id') id: number) {
+    return this.userService.findOne(id);
+  }
+
+  @Post()
+  @ApiOperation({ summary: '创建用户' })
+  create(@Body() dto: CreateUserDto) {
+    return this.userService.create(dto);
+  }
+
+  @Put(':id')
+  @ApiOperation({ summary: '更新用户' })
+  update(@Param('id') id: number, @Body() dto: UpdateUserDto) {
+    return this.userService.update(id, dto);
+  }
+
+  @Put(':id/reset-password')
+  @ApiOperation({ summary: '重置密码' })
+  resetPassword(@Param('id') id: number, @Body('password') password: string) {
+    return this.userService.resetPassword(id, password);
   }
 
   @Delete(':id')

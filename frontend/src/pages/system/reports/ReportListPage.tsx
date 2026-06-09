@@ -26,7 +26,7 @@ export default function ReportConfigPage() {
     try {
       const data = await reportApi.listAdmin(keyword);
       setReports(data);
-    } catch { /* 忽略 */ } finally { setLoading(false); }
+    } catch (e) { console.error('加载清单列表失败:', e); } finally { setLoading(false); }
   };
 
   useEffect(() => { loadReports(); }, []);
@@ -67,7 +67,7 @@ export default function ReportConfigPage() {
       }
       setModalVisible(false);
       loadReports();
-    } catch { /* 忽略 */ }
+    } catch (e) { console.error('保存清单失败:', e); }
   };
 
   const handleDelete = async (id: number) => {

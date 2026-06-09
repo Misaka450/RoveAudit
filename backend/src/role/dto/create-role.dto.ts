@@ -1,5 +1,6 @@
 import { IsString, IsNotEmpty, IsOptional, IsArray } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { PartialType } from '@nestjs/swagger';
 
 export class CreateRoleDto {
   @ApiProperty({ description: '角色名称' })
@@ -27,3 +28,6 @@ export class CreateRoleDto {
   @IsArray()
   permissionIds?: number[];
 }
+
+/** 更新角色 DTO — 所有字段可选 */
+export class UpdateRoleDto extends PartialType(CreateRoleDto) {}

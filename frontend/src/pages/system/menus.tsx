@@ -18,7 +18,7 @@ export default function MenuPage() {
     try {
       const data = await menuApi.list();
       setMenus(data);
-    } catch { /* 忽略 */ } finally { setLoading(false); }
+    } catch (e) { console.error('加载菜单失败:', e); } finally { setLoading(false); }
   };
 
   useEffect(() => { loadMenus(); }, []);
@@ -48,7 +48,7 @@ export default function MenuPage() {
       }
       setModalVisible(false);
       loadMenus();
-    } catch { /* 忽略 */ }
+    } catch (e) { console.error('保存菜单失败:', e); }
   };
 
   const handleDelete = async (id: number) => {

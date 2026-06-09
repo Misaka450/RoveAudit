@@ -54,8 +54,9 @@ export default function WarningPage() {
       setResults(resultsData);
       setTrendData(trend);
       setDistribution(dist);
-    } catch {
+    } catch (e) {
       message.error('加载预警数据失败，请检查后端服务');
+      console.error('加载预警数据失败:', e);
     } finally {
       setLoading(false);
     }
@@ -70,8 +71,9 @@ export default function WarningPage() {
       const data = await warningApi.executeAll();
       message.success(`检测完成，共发现 ${data.filter((r: any) => r.status === 'success').reduce((s: number, r: any) => s + r.count, 0)} 条异常`);
       loadResults();
-    } catch {
+    } catch (e) {
       message.error('执行失败，请检查后端服务');
+      console.error('执行检测失败:', e);
     } finally {
       setExecuting(false);
     }

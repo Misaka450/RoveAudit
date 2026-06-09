@@ -8,9 +8,8 @@ export interface UserInfo {
   menus: string[];
 }
 
-// 登录响应类型
+// 登录响应类型（Token 通过 HttpOnly Cookie 传递，响应体仅包含 userInfo）
 export interface LoginResponse {
-  token: string;
   userInfo: UserInfo;
 }
 

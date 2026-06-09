@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Put, Delete, Body, Param } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { RoleService } from './role.service';
-import { CreateRoleDto } from './dto/create-role.dto';
+import { CreateRoleDto, UpdateRoleDto } from './dto/create-role.dto';
 
 /**
  * 角色管理控制器
@@ -31,7 +31,7 @@ export class RoleController {
 
   @Put(':id')
   @ApiOperation({ summary: '更新角色（含分配菜单和权限）' })
-  update(@Param('id') id: number, @Body() data: Partial<CreateRoleDto>) {
+  update(@Param('id') id: number, @Body() data: UpdateRoleDto) {
     return this.roleService.update(id, data);
   }
 

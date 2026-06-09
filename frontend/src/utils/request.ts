@@ -75,8 +75,9 @@ instance.interceptors.response.use(
         // Token 失效 → 通知后端加入黑名单并清除本地状态
         try {
           await instance.post('/auth/logout');
-        } catch {
+        } catch (e) {
           // 后端也返回 401 则忽略
+          console.error('自动登出失败:', e);
         }
         localStorage.removeItem('userInfo');
         navigate('/login');

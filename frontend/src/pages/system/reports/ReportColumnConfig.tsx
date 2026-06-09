@@ -51,8 +51,9 @@ export default function ReportColumnConfig({ reportCode, visible }: Props) {
     try {
       await reportColumnApi.save(reportCode, columns);
       message.success('字段配置已保存');
-    } catch {
+    } catch (e) {
       message.error('保存失败');
+      console.error('保存字段配置失败:', e);
     }
   };
 

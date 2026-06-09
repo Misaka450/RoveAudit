@@ -17,9 +17,9 @@ export default function AuditLogPage() {
       const data = await auditLogApi.list(keyword || undefined, page, pageSize);
       setLogs(data.list || []);
       setTotal(data.total || 0);
-    } catch {
-      // 后端接口可能不存在，使用模拟数据
+    } catch (e) {
       setLogs([]);
+      console.error('加载审计日志失败:', e);
     } finally {
       setLoading(false);
     }
@@ -34,7 +34,7 @@ export default function AuditLogPage() {
       await auditLogApi.remove(id);
       message.success('删除成功');
       loadLogs();
-    } catch { message.error('删除失败'); }
+    } catch (e) { message.error('删除失败'); console.error('删除审计日志失败:', e); }
   };
 
   const handleClean = async () => {
@@ -42,7 +42,7 @@ export default function AuditLogPage() {
       await auditLogApi.clean(30);
       message.success('清理完成');
       loadLogs();
-    } catch { message.error('清理失败'); }
+    } catch (e) { message.error('清理失败'); console.error('清理审计日志失败:', e); }
   };
 
   const columns = [
