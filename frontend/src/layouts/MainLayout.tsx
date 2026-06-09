@@ -1,7 +1,7 @@
 import React from 'react';
 import { useState, useEffect, useCallback } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Layout, Menu, Button, Dropdown, Avatar, theme, message } from 'antd';
+import { Layout, Menu, Button, Dropdown, Avatar, theme, message, Drawer, Grid } from 'antd';
 import * as Icons from '@ant-design/icons';
 import { useAuthStore } from '@/store/authStore';
 import { menuApi } from '@/api';
@@ -9,6 +9,7 @@ import { setNavigate } from '@/utils/navigationService';
 import type { MenuItem } from '@/types';
 
 const { Header, Sider, Content } = Layout;
+const { useBreakpoint } = Grid;
 
 /**
  * 动态获取图标组件 - 支持数据库中配置的任何 @ant-design/icons 图标
@@ -23,19 +24,31 @@ const getIcon = (iconName?: string): React.ReactNode => {
 
 /**
  * 主布局组件 - 包含侧边栏、顶部导航、内容区域
+ * 移动端（<768px）：侧边栏折叠为 Drawer，汉堡菜单按钮展示
+ * 桌面端（≥768px）：固定 Sider 侧边栏
  */
 export default function MainLayout() {
-  const [collapsed, setCollapsed] = useState(false); // 侧边栏折叠状态
-  const [menuItems, setMenuItems] = useState<any[]>([]); // 动态菜单项
+  const [collapsed, setCollapsed] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [menuItems, setMenuItems] = useState<any[]>([]);
   const navigate = useNavigate();
   const location = useLocation();
   const { userInfo, logout } = useAuthStore();
   const { token: themeToken } = theme.useToken();
+  const screens = useBreakpoint();
+  const isMobile = !screens.md; // <768px 视为移动端
 
   // 注册导航服务，使 axios 拦截器也能使用 React Router 跳转
   useEffect(() => {
     setNavigate(navigate);
   }, [navigate]);
+
+  // 移动端：路由切换后自动关闭 Drawer
+  useEffect(() => {
+    if (isMobile) {
+      setDrawerOpen(false);
+    }
+  }, [location.pathname, isMobile]);
 
   // 使用 useCallback 定义菜单加载函数（稳定引用，避免重复执行）
   const loadMenus = useCallback(async () => {
@@ -92,59 +105,91 @@ export default function MainLayout() {
     return [];
   };
 
+  // 菜单点击处理
+  const handleMenuClick = ({ key }: { key: string }) => {
+    navigate(key);
+    if (isMobile) {
+      setDrawerOpen(false);
+    }
+  };
+
+  // 侧边栏内容（桌面端 Sider 和移动端 Drawer 共用）
+  const sidebarContent = (
+    <>
+      {/* Logo 区域 */}
+      <div style={{
+        height: 64,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: '#fff',
+        fontSize: collapsed && !isMobile ? 16 : 18,
+        fontWeight: 'bold',
+        borderBottom: '1px solid rgba(255,255,255,0.1)',
+      }}>
+        {collapsed && !isMobile ? 'DP' : '数据门户平台'}
+      </div>
+
+      {/* 动态菜单 */}
+      <Menu
+        theme="dark"
+        mode="inline"
+        selectedKeys={[location.pathname]}
+        defaultOpenKeys={getOpenKeys()}
+        items={menuItems}
+        onClick={handleMenuClick}
+      />
+    </>
+  );
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      {/* 左侧边栏 */}
-      <Sider
-        trigger={null}
-        collapsible
-        collapsed={collapsed}
-        theme="dark"
-        width={220}
-      >
-        {/* Logo 区域 */}
-        <div style={{
-          height: 64,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: '#fff',
-          fontSize: collapsed ? 16 : 18,
-          fontWeight: 'bold',
-          borderBottom: '1px solid rgba(255,255,255,0.1)',
-        }}>
-          {collapsed ? 'DP' : '数据门户平台'}
-        </div>
-
-        {/* 动态菜单 */}
-        <Menu
+      {/* 桌面端：固定 Sider */}
+      {!isMobile && (
+        <Sider
+          trigger={null}
+          collapsible
+          collapsed={collapsed}
           theme="dark"
-          mode="inline"
-          selectedKeys={[location.pathname]}
-          defaultOpenKeys={getOpenKeys()}
-          items={menuItems}
-          onClick={({ key }) => navigate(key)}
-        />
-      </Sider>
+          width={220}
+        >
+          {sidebarContent}
+        </Sider>
+      )}
 
-      {/* 右侧内容区域 */}
       <Layout>
         {/* 顶部导航栏 */}
         <Header style={{
           background: themeToken.colorBgContainer,
-          padding: '0 24px',
+          padding: isMobile ? '0 12px' : '0 24px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
         }}>
-          {/* 左侧：折叠按钮 */}
+          {/* 左侧：折叠按钮 / 汉堡菜单 */}
           <Button
             type="text"
-            icon={collapsed ? <Icons.MenuUnfoldOutlined /> : <Icons.MenuFoldOutlined />}
-            onClick={() => setCollapsed(!collapsed)}
+            icon={isMobile
+              ? <Icons.MenuOutlined />
+              : (collapsed ? <Icons.MenuUnfoldOutlined /> : <Icons.MenuFoldOutlined />)
+            }
+            onClick={() => {
+              if (isMobile) {
+                setDrawerOpen(true);
+              } else {
+                setCollapsed(!collapsed);
+              }
+            }}
             style={{ fontSize: 16 }}
           />
+
+          {/* 移动端：显示当前页面标题 */}
+          {isMobile && (
+            <span style={{ fontSize: 14, fontWeight: 500, color: '#333' }}>
+              {menuItems.find((m) => m.key === location.pathname)?.label || '数据门户平台'}
+            </span>
+          )}
 
           {/* 右侧：用户信息下拉菜单 */}
           <Dropdown
@@ -155,17 +200,42 @@ export default function MainLayout() {
             }}
           >
             <div style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Avatar icon={<Icons.UserOutlined />} style={{ backgroundColor: themeToken.colorPrimary }} />
-              <span>{userInfo?.realName || '用户'}</span>
+              <Avatar
+                size={isMobile ? 'small' : 'default'}
+                icon={<Icons.UserOutlined />}
+                style={{ backgroundColor: themeToken.colorPrimary }}
+              />
+              {!isMobile && <span>{userInfo?.realName || '用户'}</span>}
             </div>
           </Dropdown>
         </Header>
 
         {/* 内容区域 */}
-        <Content style={{ margin: 24, padding: 24, background: themeToken.colorBgContainer, borderRadius: 8 }}>
+        <Content style={{
+          margin: isMobile ? 8 : 24,
+          padding: isMobile ? 12 : 24,
+          background: themeToken.colorBgContainer,
+          borderRadius: 8,
+          overflow: 'hidden',
+        }}>
           <Outlet /> {/* 子路由内容在此渲染 */}
         </Content>
       </Layout>
+
+      {/* 移动端：Drawer 抽屉菜单 */}
+      {isMobile && (
+        <Drawer
+          title={null}
+          placement="left"
+          onClose={() => setDrawerOpen(false)}
+          open={drawerOpen}
+          bodyStyle={{ padding: 0, background: '#001529' }}
+          width={240}
+          headerStyle={{ display: 'none' }}
+        >
+          {sidebarContent}
+        </Drawer>
+      )}
     </Layout>
   );
 }

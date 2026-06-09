@@ -1,11 +1,45 @@
 import { useEffect, useState } from 'react';
-import { Card, Table, Button, Space, Tag, Statistic, Row, Col } from 'antd';
+import { Card, Table, Button, Space, Tag, Statistic, Row, Col, Grid, Typography } from 'antd';
 import { FireOutlined, ReloadOutlined } from '@ant-design/icons';
 import { warningApi } from '@/api';
+
+const { Text } = Typography;
+const { useBreakpoint } = Grid;
+
+/** 移动端规则结果卡片 */
+const MobileResultCard = ({ record }: { record: any }) => {
+  const getRiskColor = (level: string) => {
+    if (level === 'high') return 'red';
+    if (level === 'medium') return 'orange';
+    return 'blue';
+  };
+  return (
+    <Card size="small" style={{ marginBottom: 8 }} styles={{ body: { padding: '10px 12px' } }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+        <span style={{ fontWeight: 500, fontSize: 13, flex: 1 }}>{record.ruleName}</span>
+        <Tag color={getRiskColor(record.riskLevel)} style={{ marginLeft: 8, flexShrink: 0 }}>
+          {record.riskLevel === 'high' ? '高' : record.riskLevel === 'medium' ? '中' : '低'}
+        </Tag>
+      </div>
+      <div style={{ fontSize: 12, color: '#888', display: 'flex', justifyContent: 'space-between' }}>
+        <span>{record.ruleType}</span>
+        <span>异常 {record.lastResultCount || 0} 条</span>
+      </div>
+      {record.lastRunTime && (
+        <div style={{ fontSize: 11, color: '#aaa', marginTop: 4 }}>
+          {new Date(record.lastRunTime).toLocaleString()}
+        </div>
+      )}
+    </Card>
+  );
+};
 
 export default function WarningResultsPage() {
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const screens = useBreakpoint();
+  const isMobile = !screens.md;
 
   const loadData = async () => {
     setLoading(true);
@@ -54,31 +88,46 @@ export default function WarningResultsPage() {
   ];
 
   return (
-    <Card title="异常检测结果">
-      <Row gutter={16} style={{ marginBottom: 16 }}>
-        <Col span={6}>
-          <Statistic title="高风险规则" value={totalHigh} valueStyle={{ color: '#cf1322' }} prefix={<FireOutlined />} />
+    <Card
+      title="异常检测结果"
+      extra={
+        <Button icon={<ReloadOutlined />} onClick={loadData} size="small">
+          {!isMobile && '刷新'}
+        </Button>
+      }
+    >
+      <Row gutter={[isMobile ? 8 : 16, isMobile ? 8 : 16]} style={{ marginBottom: 16 }}>
+        <Col xs={12} sm={6}>
+          <Statistic title="高风险" value={totalHigh} valueStyle={{ color: '#cf1322', fontSize: isMobile ? 18 : 24 }} prefix={<FireOutlined />} />
         </Col>
-        <Col span={6}>
-          <Statistic title="中风险规则" value={totalMedium} valueStyle={{ color: '#d46b08' }} />
+        <Col xs={12} sm={6}>
+          <Statistic title="中风险" value={totalMedium} valueStyle={{ color: '#d46b08', fontSize: isMobile ? 18 : 24 }} />
         </Col>
-        <Col span={6}>
-          <Statistic title="低风险规则" value={totalLow} valueStyle={{ color: '#096dd9' }} />
+        <Col xs={12} sm={6}>
+          <Statistic title="低风险" value={totalLow} valueStyle={{ color: '#096dd9', fontSize: isMobile ? 18 : 24 }} />
         </Col>
-        <Col span={6}>
-          <Statistic title="累计异常数" value={totalCount} />
+        <Col xs={12} sm={6}>
+          <Statistic title="累计异常" value={totalCount} valueStyle={{ fontSize: isMobile ? 18 : 24 }} />
         </Col>
       </Row>
-      <Space style={{ marginBottom: 16 }}>
-        <Button icon={<ReloadOutlined />} onClick={loadData}>刷新</Button>
-      </Space>
-      <Table
-        columns={columns}
-        dataSource={results}
-        rowKey="id"
-        loading={loading}
-        pagination={{ showSizeChanger: true, showTotal: (t) => `共 ${t} 条` }}
-      />
+
+      {isMobile ? (
+        loading ? (
+          <div style={{ textAlign: 'center', padding: 40 }}><Text type="secondary">加载中...</Text></div>
+        ) : results.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 40 }}><Text type="secondary">暂无数据</Text></div>
+        ) : (
+          results.map((record) => <MobileResultCard key={record.id} record={record} />)
+        )
+      ) : (
+        <Table
+          columns={columns}
+          dataSource={results}
+          rowKey="id"
+          loading={loading}
+          pagination={{ showSizeChanger: true, showTotal: (t) => `共 ${t} 条` }}
+        />
+      )}
     </Card>
   );
 }

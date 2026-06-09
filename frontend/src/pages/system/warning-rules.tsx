@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import {
-  Card, Table, Button, Space, Modal, Form, Input, Select, Switch, Tag, message, Popconfirm,
+  Card, Table, Button, Space, Modal, Form, Input, Select, Switch, Tag, message, Popconfirm, Grid,
 } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { warningApi } from '@/api';
 
 const { TextArea } = Input;
+const { useBreakpoint } = Grid;
 
 /**
  * 异常规则管理页面 - 配置异常检测规则
@@ -16,6 +17,9 @@ export default function WarningRulesPage() {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingRule, setEditingRule] = useState<any>(null);
   const [form] = Form.useForm();
+
+  const screens = useBreakpoint();
+  const isMobile = !screens.md;
 
   const loadRules = async () => {
     setLoading(true);
@@ -108,13 +112,13 @@ export default function WarningRulesPage() {
     },
     { title: '最后执行时间', dataIndex: 'lastRunTime', key: 'lastRunTime', width: 160 },
     {
-      title: '操作', key: 'action', width: 220,
+      title: '操作', key: 'action', width: isMobile ? 100 : 220,
       render: (_: any, record: any) => (
-        <Space>
-          <Button type="link" icon={<EditOutlined />} onClick={() => handleEdit(record)}>编辑</Button>
-          <Button type="link" icon={<ThunderboltOutlined />} onClick={() => handleExecute(record.id)}>执行</Button>
+        <Space size="small">
+          <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)}>{!isMobile && '编辑'}</Button>
+          <Button type="link" size="small" icon={<ThunderboltOutlined />} onClick={() => handleExecute(record.id)}>{!isMobile && '执行'}</Button>
           <Popconfirm title="确定删除？" onConfirm={() => handleDelete(record.id)}>
-            <Button type="link" danger icon={<DeleteOutlined />}>删除</Button>
+            <Button type="link" size="small" danger icon={<DeleteOutlined />}>{!isMobile && '删除'}</Button>
           </Popconfirm>
         </Space>
       ),
@@ -124,9 +128,9 @@ export default function WarningRulesPage() {
   return (
     <Card
       title="异常规则管理"
-      extra={<Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>新增规则</Button>}
+      extra={<Button type="primary" icon={<PlusOutlined />} onClick={handleCreate} size="small">{isMobile ? '新增' : '新增规则'}</Button>}
     >
-      <Table columns={columns} dataSource={rules} rowKey="id" loading={loading} scroll={{ x: 900 }} />
+      <Table columns={columns} dataSource={rules} rowKey="id" loading={loading} scroll={{ x: isMobile ? 500 : 900 }} size={isMobile ? 'small' : 'middle'} pagination={{ size: isMobile ? 'small' : 'default', showTotal: (t) => `共 ${t} 条` }} />
 
       <Modal
         title={editingRule ? '编辑异常规则' : '新增异常规则'}
@@ -134,7 +138,9 @@ export default function WarningRulesPage() {
         onOk={handleSubmit}
         onCancel={() => setModalVisible(false)}
         destroyOnClose
-        width={650}
+        width={isMobile ? '100%' : 650}
+        style={isMobile ? { top: 0, maxWidth: '100%', paddingBottom: 0 } : undefined}
+        styles={isMobile ? { body: { height: 'calc(100vh - 110px)', overflow: 'auto' } } : undefined}
       >
         <Form form={form} layout="vertical">
           <Form.Item name="ruleName" label="规则名称" rules={[{ required: true, message: '请输入规则名称' }]}>

@@ -1,9 +1,11 @@
 import { useEffect, useState, useRef } from 'react';
-import { Card, Table, Button, Space, Input, Modal, Form, Select, Tag, message, Popconfirm, Upload, Tabs } from 'antd';
+import { Card, Table, Button, Space, Input, Modal, Form, Select, Tag, message, Popconfirm, Upload, Tabs, Grid } from 'antd';
 import { PlusOutlined, SearchOutlined, EditOutlined, DeleteOutlined, KeyOutlined, UploadOutlined, DownloadOutlined, FileExcelOutlined } from '@ant-design/icons';
 import { read, utils, write } from 'xlsx';
 import { userApi, roleApi } from '@/api';
 import type { User } from '@/types';
+
+const { useBreakpoint } = Grid;
 
 /**
  * 用户管理页面 - 支持 Excel 批量导入
@@ -24,6 +26,9 @@ export default function UserPage() {
   const [importStep, setImportStep] = useState<'upload' | 'preview' | 'result'>('upload');
   const [importResult, setImportResult] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const screens = useBreakpoint();
+  const isMobile = !screens.md;
 
   const loadUsers = async () => {
     setLoading(true);
@@ -184,12 +189,12 @@ export default function UserPage() {
     { title: '手机号', dataIndex: 'phone', key: 'phone' },
     { title: '状态', dataIndex: 'status', key: 'status', render: (s: number) => <Tag color={s === 1 ? 'green' : 'red'}>{s === 1 ? '启用' : '禁用'}</Tag> },
     { title: '角色', dataIndex: 'roles', key: 'roles', render: (r: any[]) => r?.map((x) => <Tag key={x.id}>{x.roleName}</Tag>) },
-    { title: '操作', key: 'action', render: (_: any, rec: User) => (
-      <Space>
-        <Button type="link" icon={<EditOutlined />} onClick={() => handleEdit(rec)}>编辑</Button>
-        <Button type="link" icon={<KeyOutlined />} onClick={() => handleResetPassword(rec)}>重置密码</Button>
+    { title: '操作', key: 'action', width: isMobile ? 100 : undefined, render: (_: any, rec: User) => (
+      <Space size="small">
+        <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEdit(rec)}>{!isMobile && '编辑'}</Button>
+        <Button type="link" size="small" icon={<KeyOutlined />} onClick={() => handleResetPassword(rec)}>{!isMobile && '重置'}</Button>
         <Popconfirm title="确定禁用？" onConfirm={() => handleDelete(rec.id)}>
-          <Button type="link" danger icon={<DeleteOutlined />}>禁用</Button>
+          <Button type="link" size="small" danger icon={<DeleteOutlined />}>{!isMobile && '禁用'}</Button>
         </Popconfirm>
       </Space>
     )},
@@ -199,14 +204,14 @@ export default function UserPage() {
     <Card
       title="用户管理"
       extra={
-        <Space>
-          <Input placeholder="搜索账号/姓名" prefix={<SearchOutlined />} value={keyword} onChange={(e) => setKeyword(e.target.value)} onPressEnter={loadUsers} style={{ width: 200 }} />
-          <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>新增用户</Button>
-          <Button icon={<UploadOutlined />} onClick={() => setImportVisible(true)}>批量导入</Button>
+        <Space wrap size={isMobile ? 'small' : 'middle'}>
+          <Input placeholder="搜索账号/姓名" prefix={<SearchOutlined />} value={keyword} onChange={(e) => setKeyword(e.target.value)} onPressEnter={loadUsers} style={{ width: isMobile ? '100%' : 200 }} size="small" />
+          <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate} size="small">{isMobile ? '新增' : '新增用户'}</Button>
+          <Button icon={<UploadOutlined />} onClick={() => setImportVisible(true)} size="small">{isMobile ? '导入' : '批量导入'}</Button>
         </Space>
       }
     >
-      <Table columns={columns} dataSource={users} rowKey="id" loading={loading} scroll={{ x: 800 }} />
+      <Table columns={columns} dataSource={users} rowKey="id" loading={loading} scroll={{ x: isMobile ? 400 : 800 }} size={isMobile ? 'small' : 'middle'} pagination={{ size: isMobile ? 'small' : 'default', showTotal: (t) => `共 ${t} 条` }} />
 
       {/* 新增/编辑用户弹窗 */}
       <Modal title={editingUser ? '编辑用户' : '新增用户'} open={modalVisible} onOk={handleSubmit} onCancel={() => setModalVisible(false)} destroyOnClose>

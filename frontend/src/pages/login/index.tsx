@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Form, Input, Button, Card, Typography, message, Image } from 'antd';
+import { Form, Input, Button, Card, Typography, message, Image, Grid } from 'antd';
 import { UserOutlined, LockOutlined, SafetyOutlined } from '@ant-design/icons';
 import { authApi } from '@/api';
 import { useAuthStore } from '@/store/authStore';
 
 const { Title, Text } = Typography;
+const { useBreakpoint } = Grid;
 
 /** 验证码触发阈值：连续失败 2 次后显示 */
 const CAPTCHA_THRESHOLD = 2;
@@ -14,6 +15,7 @@ const CAPTCHA_THRESHOLD = 2;
  * 登录页面 - 已登录用户自动跳转首页
  * 安全策略：连续输错密码 2 次后，需填写图片验证码
  * 失败次数以后端为准，刷新页面后自动同步
+ * 移动端：卡片全宽适配
  */
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
@@ -21,6 +23,9 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const setAuth = useAuthStore((s) => s.setAuth);
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
+
+  const screens = useBreakpoint();
+  const isMobile = !screens.md;
 
   /** 连续失败次数（以后端返回为准） */
   const [failCount, setFailCount] = useState(0);
@@ -138,14 +143,22 @@ export default function LoginPage() {
       justifyContent: 'center',
       alignItems: 'center',
       background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      padding: isMobile ? 16 : 24,
     }}>
-      <Card style={{ width: 400, boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
+      <Card
+        style={{
+          width: 400,
+          maxWidth: '100%',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+        }}
+        styles={{ body: { padding: isMobile ? 24 : 36 } }}
+      >
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <Title level={3} style={{ marginBottom: 4 }}>数据门户平台</Title>
+          <Title level={isMobile ? 4 : 3} style={{ marginBottom: 4 }}>数据门户平台</Title>
           <Text type="secondary">运营商内部数据管理系统</Text>
         </div>
 
-        <Form form={form} onFinish={handleLogin} onValuesChange={handleValuesChange} size="large" autoComplete="off">
+        <Form form={form} onFinish={handleLogin} onValuesChange={handleValuesChange} size={isMobile ? 'middle' : 'large'} autoComplete="off">
           <Form.Item
             name="username"
             rules={[{ required: true, message: '请输入账号' }]}

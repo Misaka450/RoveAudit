@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import {
-  Card, Table, Button, Space, Input, DatePicker, Tag, message, Tooltip, Select, Row, Col, Form,
+  Card, Table, Button, Space, Input, DatePicker, Tag, message, Tooltip, Select, Row, Col, Form, Grid, Typography, Badge, Segmented,
 } from 'antd';
 import {
   SearchOutlined, ReloadOutlined, DownloadOutlined, FilterOutlined, EyeOutlined, TableOutlined,
@@ -10,9 +10,39 @@ import { reportApi, dataQueryApi, downloadApi } from '@/api';
 import type { ReportConfig, QueryParamConfig } from '@/types';
 
 const { RangePicker } = DatePicker;
+const { Text } = Typography;
+const { useBreakpoint } = Grid;
+
+/** 移动端行卡片渲染（替代传统表格行） */
+const MobileDataCard = ({ record, columns }: { record: any; columns: any[] }) => (
+  <Card
+    size="small"
+    style={{ marginBottom: 8 }}
+    styles={{ body: { padding: '10px 12px' } }}
+  >
+    {columns.map((col) => {
+      // 跳过太长的列（如原始 JSON）
+      const val = record[col.dataIndex];
+      if (val === null || val === undefined) return null;
+      const strVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
+      if (strVal === '-' || strVal === '') return null;
+      return (
+        <div key={col.key} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', borderBottom: '1px solid #f5f5f5' }}>
+          <span style={{ color: '#888', fontSize: 12, flexShrink: 0, marginRight: 8, maxWidth: '40%' }}>
+            {col.title}
+          </span>
+          <span style={{ fontSize: 13, textAlign: 'right', wordBreak: 'break-all', color: '#333' }}>
+            {col.render ? col.render(val, record, 0) : strVal}
+          </span>
+        </div>
+      );
+    })}
+  </Card>
+);
 
 /**
  * 通用清单数据页 - 自动渲染查询条件 + 列筛选 + 下载 + 预览
+ * 移动端：表格改为卡片列表，筛选条件垂直堆叠
  */
 export default function ReportListPage() {
   const { reportCode } = useParams<{ reportCode: string }>();
@@ -26,6 +56,10 @@ export default function ReportListPage() {
   const [activeFilters, setActiveFilters] = useState<Record<string, any>>({});
   const [dateRange, setDateRange] = useState<[string, string] | null>(null);
   const [previewMode, setPreviewMode] = useState(false);
+  const [mobileView, setMobileView] = useState<'card' | 'table'>('card');
+
+  const screens = useBreakpoint();
+  const isMobile = !screens.md;
 
   // 解析 query_params 自动生成查询条件（useMemo 稳定引用，避免死循环）
   const queryParamsConfig: QueryParamConfig[] = useMemo(() => {
@@ -61,12 +95,8 @@ export default function ReportListPage() {
   // 从数据中提取列定义（不依赖 activeFilters，避免死循环）
   const buildColumns = useCallback((cols: string[], columnConfigs?: any[]) => {
     return cols.map((key) => {
-      // 查找字段配置
       const config = columnConfigs?.find((c) => c.columnName === key);
-
-      // 如果配置了不显示，跳过
       if (config && !config.visible) return null;
-
       return {
         title: config?.columnLabel || key,
         dataIndex: key,
@@ -123,7 +153,6 @@ export default function ReportListPage() {
         params.startDate = dr[0]!;
         params.endDate = dr[1]!;
       }
-      // 解析自动生成的查询条件参数
       for (const qp of qpc) {
         if (filters[qp.key]) {
           params[qp.key] = filters[qp.key];
@@ -172,11 +201,13 @@ export default function ReportListPage() {
 
     return (
       <Card size="small" style={{ marginBottom: 16, background: '#fafafa' }}>
-        <Row gutter={[12, 12]}>
+        <Row gutter={isMobile ? [8, 8] : [12, 12]}>
           {queryParamsConfig.map((param) => (
-            <Col key={param.key}>
-              <Space>
-                <span style={{ fontSize: 13, color: '#666' }}>{param.label || param.key}：</span>
+            <Col key={param.key} xs={24} sm={isMobile ? 24 : undefined}>
+              <Space direction={isMobile ? 'horizontal' : 'horizontal'} style={{ width: '100%' }}>
+                <span style={{ fontSize: 13, color: '#666', flexShrink: 0, minWidth: isMobile ? 60 : 'auto' }}>
+                  {param.label || param.key}：
+                </span>
                 {renderParamInput(param)}
               </Space>
             </Col>
@@ -203,8 +234,9 @@ export default function ReportListPage() {
           }}
           options={param.options}
           allowClear
-          style={{ width: 150 }}
+          style={{ width: isMobile ? '100%' : 150, minWidth: isMobile ? '100%' : undefined }}
           size="small"
+          popupMatchSelectWidth={!isMobile}
         />
       );
     }
@@ -221,7 +253,7 @@ export default function ReportListPage() {
             setActiveFilters(newFilters);
             setPage(1);
           }}
-          style={{ width: 130 }}
+          style={{ width: isMobile ? '100%' : 130, minWidth: isMobile ? '100%' : undefined }}
           size="small"
         />
       );
@@ -243,7 +275,7 @@ export default function ReportListPage() {
           setActiveFilters(newFilters);
           setPage(1);
         }}
-        style={{ width: 150 }}
+        style={{ width: isMobile ? '100%' : 150, minWidth: isMobile ? '100%' : undefined }}
         size="small"
       />
     );
@@ -256,8 +288,8 @@ export default function ReportListPage() {
 
       <Card
         title={
-          <Space>
-            <span style={{ fontSize: 18, fontWeight: 600 }}>{report?.reportName || '数据清单'}</span>
+          <Space wrap size={isMobile ? 'small' : 'middle'}>
+            <span style={{ fontSize: isMobile ? 15 : 18, fontWeight: 600 }}>{report?.reportName || '数据清单'}</span>
             {report?.category && <Tag color="blue">{report.category}</Tag>}
             {report?.enableDownload ? <Tag color="green">可下载</Tag> : <Tag>不可下载</Tag>}
             {activeFilterCount > 0 && <Tag color="orange">筛选中 ({activeFilterCount})</Tag>}
@@ -265,7 +297,19 @@ export default function ReportListPage() {
           </Space>
         }
         extra={
-          <Space wrap>
+          <Space wrap size={isMobile ? 'small' : 'middle'}>
+            {/* 移动端：视图切换 */}
+            {isMobile && data.length > 0 && (
+              <Segmented
+                size="small"
+                value={mobileView}
+                onChange={(v) => setMobileView(v as 'card' | 'table')}
+                options={[
+                  { label: '卡片', value: 'card' },
+                  { label: '表格', value: 'table' },
+                ]}
+              />
+            )}
             <RangePicker
               size="small"
               onChange={(dates, dateStrings) => {
@@ -279,34 +323,83 @@ export default function ReportListPage() {
                 icon={previewMode ? <TableOutlined /> : <EyeOutlined />}
                 onClick={() => setPreviewMode(!previewMode)}
                 type={previewMode ? 'primary' : 'default'}
+                size="small"
               >
-                {previewMode ? '完整列表' : '预览'}
+                {!isMobile && (previewMode ? '完整列表' : '预览')}
               </Button>
             </Tooltip>
-            <Button icon={<ReloadOutlined />} onClick={() => { setActiveFilters({}); setDateRange(null); setPage(1); }}>
-              重置筛选
+            <Button icon={<ReloadOutlined />} onClick={() => { setActiveFilters({}); setDateRange(null); setPage(1); }} size="small">
+              {!isMobile && '重置'}
             </Button>
-            <Button icon={<DownloadOutlined />} onClick={() => handleDownload('excel')} disabled={!report?.enableDownload}>Excel</Button>
-            <Button icon={<DownloadOutlined />} onClick={() => handleDownload('csv')} disabled={!report?.enableDownload}>CSV</Button>
+            <Button icon={<DownloadOutlined />} onClick={() => handleDownload('excel')} disabled={!report?.enableDownload} size="small">
+              {isMobile ? 'XLS' : 'Excel'}
+            </Button>
+            <Button icon={<DownloadOutlined />} onClick={() => handleDownload('csv')} disabled={!report?.enableDownload} size="small">
+              {isMobile ? 'CSV' : 'CSV'}
+            </Button>
           </Space>
         }
+        styles={{ header: { padding: isMobile ? '8px 12px' : undefined } }}
       >
         {report?.description && (
           <div style={{ marginBottom: 16, color: '#666', fontSize: 13 }}>{report.description}</div>
         )}
-        <Table
-          columns={columns}
-          dataSource={data}
-          rowKey={(_, index) => String(index)}
-          loading={loading}
-          scroll={{ x: 'max-content' }}
-          pagination={previewMode ? false : {
-            current: page, pageSize, total,
-            showSizeChanger: true, showQuickJumper: true,
-            showTotal: (t) => `共 ${t} 条`,
-            onChange: (p, ps) => { setPage(p); setPageSize(ps); },
-          }}
-        />
+
+        {/* 移动端卡片视图 / 桌面端表格视图 */}
+        {isMobile && mobileView === 'card' ? (
+          <div>
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: 40 }}><Text type="secondary">加载中...</Text></div>
+            ) : data.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: 40 }}><Text type="secondary">暂无数据</Text></div>
+            ) : (
+              <>
+                {data.map((record, index) => (
+                  <MobileDataCard key={index} record={record} columns={columns} />
+                ))}
+                {!previewMode && (
+                  <div style={{ display: 'flex', justifyContent: 'center', marginTop: 12, gap: 8, flexWrap: 'wrap' }}>
+                    <Button
+                      size="small"
+                      disabled={page <= 1}
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    >
+                      上一页
+                    </Button>
+                    <span style={{ lineHeight: '32px', fontSize: 13 }}>
+                      第 {page} 页 · 共 {total} 条
+                    </span>
+                    <Button
+                      size="small"
+                      disabled={page * pageSize >= total}
+                      onClick={() => setPage((p) => p + 1)}
+                    >
+                      下一页
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        ) : (
+          <Table
+            columns={columns}
+            dataSource={data}
+            rowKey={(_, index) => String(index)}
+            loading={loading}
+            scroll={{ x: 'max-content' }}
+            pagination={previewMode ? false : {
+              current: page, pageSize, total,
+              showSizeChanger: !isMobile,
+              showQuickJumper: !isMobile,
+              size: isMobile ? 'small' : 'default',
+              showTotal: (t) => `共 ${t} 条`,
+              onChange: (p, ps) => { setPage(p); setPageSize(ps); },
+            }}
+            size={isMobile ? 'small' : 'middle'}
+          />
+        )}
+
         {previewMode && total > 5 && (
           <div style={{ textAlign: 'center', marginTop: 16 }}>
             <Button type="link" onClick={() => setPreviewMode(false)}>

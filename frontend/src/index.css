@@ -8,6 +8,8 @@
 html, body, #root {
   height: 100%;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* 滚动条美化 */
@@ -21,4 +23,74 @@ html, body, #root {
 }
 ::-webkit-scrollbar-track {
   background: transparent;
+}
+
+/* ==================== 移动端适配 ==================== */
+
+/* 防止移动端长按弹出菜单（表格文字选择） */
+.ant-table-cell {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* 移动端触摸目标放大（按钮不小于 44px） */
+@media (max-width: 767px) {
+  /* 全局页面内容不要溢出 */
+  body {
+    overflow-x: hidden;
+  }
+
+  /* 卡片内容溢出保护 */
+  .ant-card-body {
+    overflow-x: auto;
+  }
+
+  /* 表格内文字允许选择（方便查看数据） */
+  .ant-table-cell {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+
+  /* 移动端按钮稍微加大触摸区域 */
+  .ant-btn {
+    min-height: 36px;
+  }
+
+  /* 移动端弹窗底部安全区域 */
+  .ant-modal-wrap {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* 移动端抽屉底部安全区域 */
+  .ant-drawer-body {
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+  }
+
+  /* 图表移动端不要溢出容器 */
+  .echarts-for-react {
+    max-width: 100% !important;
+  }
+
+  /* 移动端表格分页居中 */
+  .ant-pagination {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  /* 移动端统计数字不要太大 */
+  .ant-statistic-title {
+    font-size: 12px !important;
+  }
+  .ant-statistic-content {
+    font-size: 20px !important;
+  }
+}
+
+/* 桌面端表格文字也允许选择（方便复制） */
+@media (min-width: 768px) {
+  .ant-table-cell {
+    -webkit-user-select: text;
+    user-select: text;
+  }
 }

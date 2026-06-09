@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Row, Col, Card, Select, Typography, Empty, Spin, message } from 'antd';
+import { Row, Col, Card, Select, Typography, Empty, Spin, message, Grid } from 'antd';
 import ReactECharts from 'echarts-for-react';
 import { reportApi, reportChartApi, dataQueryApi } from '@/api';
 import type { ReportConfig, ReportChartConfig } from '@/types';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
+const { useBreakpoint } = Grid;
 
 /**
  * 统计分析中心 - 动态加载清单图表配置自动渲染 ECharts
+ * 移动端：图表全宽，控件自适应
  */
 export default function AnalysisPage() {
   const [reports, setReports] = useState<ReportConfig[]>([]);
@@ -15,6 +17,9 @@ export default function AnalysisPage() {
   const [charts, setCharts] = useState<ReportChartConfig[]>([]);
   const [chartData, setChartData] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(false);
+
+  const screens = useBreakpoint();
+  const isMobile = !screens.md;
 
   // 加载可用的清单列表
   useEffect(() => {
@@ -71,9 +76,9 @@ export default function AnalysisPage() {
       // 饼图/环形图 - 使用第一个指标列
       const metricKey = metrics[0];
       return {
-        title: { text: chart.chartTitle, left: 'center' },
+        title: { text: chart.chartTitle, left: 'center', textStyle: { fontSize: isMobile ? 13 : 15 } },
         tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
-        legend: { bottom: 0 },
+        legend: { bottom: 0, textStyle: { fontSize: isMobile ? 10 : 12 } },
         series: [{
           type: 'pie',
           radius: chart.isRing ? ['40%', '70%'] : '70%',
@@ -82,7 +87,7 @@ export default function AnalysisPage() {
             value: data.filter((d: any) => d[chart.dimensionColumn] === dim)
               .reduce((sum: number, d: any) => sum + Number(d[metricKey] || 0), 0),
           })),
-          label: { show: true, formatter: '{b}: {d}%' },
+          label: { show: !isMobile, formatter: '{b}: {d}%' },
         }],
       };
     }
@@ -100,35 +105,45 @@ export default function AnalysisPage() {
     }));
 
     return {
-      title: { text: chart.chartTitle, left: 'center' },
+      title: { text: chart.chartTitle, left: 'center', textStyle: { fontSize: isMobile ? 13 : 15 } },
       tooltip: { trigger: 'axis' },
-      legend: { data: metrics.map((k) => labels[k] || k), bottom: 0 },
-      xAxis: { type: 'category', data: dimensions, axisLabel: { rotate: 30 } },
-      yAxis: { type: 'value' },
-      grid: { bottom: 60 },
+      legend: { data: metrics.map((k) => labels[k] || k), bottom: 0, textStyle: { fontSize: isMobile ? 10 : 12 } },
+      xAxis: {
+        type: 'category',
+        data: dimensions,
+        axisLabel: { rotate: isMobile ? 45 : 30, fontSize: isMobile ? 9 : 11 },
+      },
+      yAxis: { type: 'value', axisLabel: { fontSize: isMobile ? 10 : 11 } },
+      grid: { bottom: 60, left: isMobile ? 40 : 60, right: isMobile ? 10 : 20, top: 40 },
       series,
     };
   };
 
+  // 移动端图表高度更小
+  const chartHeight = isMobile ? 250 : 360;
+
   return (
     <div>
-      <Title level={4} style={{ marginBottom: 24 }}>统计分析中心</Title>
+      <Title level={isMobile ? 5 : 4} style={{ marginBottom: isMobile ? 12 : 24 }}>统计分析中心</Title>
 
       {/* 选择清单 */}
-      <Card style={{ marginBottom: 16 }}>
+      <Card style={{ marginBottom: 16 }} styles={{ body: { padding: isMobile ? 12 : 24 } }}>
         <Row gutter={16} align="middle">
-          <Col>
-            <span style={{ marginRight: 8 }}>选择清单：</span>
-            <Select
-              value={selectedReport || undefined}
-              onChange={setSelectedReport}
-              style={{ width: 250 }}
-              placeholder="请选择清单"
-              options={reports.map((r) => ({
-                value: r.reportCode,
-                label: `${r.reportName} (${r.category})`,
-              }))}
-            />
+          <Col span={isMobile ? 24 : undefined}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 13, flexShrink: 0 }}>选择清单：</span>
+              <Select
+                value={selectedReport || undefined}
+                onChange={setSelectedReport}
+                style={{ width: '100%', flex: 1 }}
+                placeholder="请选择清单"
+                options={reports.map((r) => ({
+                  value: r.reportCode,
+                  label: `${r.reportName} (${r.category})`,
+                }))}
+                size={isMobile ? 'middle' : 'large'}
+              />
+            </div>
           </Col>
         </Row>
       </Card>
@@ -144,11 +159,11 @@ export default function AnalysisPage() {
             : '暂无支持图表的清单'
         } style={{ marginTop: 60 }} />
       ) : (
-        <Row gutter={[16, 16]}>
+        <Row gutter={[isMobile ? 8 : 16, isMobile ? 8 : 16]}>
           {charts.map((chart) => (
             <Col xs={24} md={chart.chartType === 'pie' ? 8 : 12} key={chart.id}>
-              <Card>
-                <ReactECharts option={buildChartOption(chart)} style={{ height: 360 }} />
+              <Card styles={{ body: { padding: isMobile ? 8 : 16 } }}>
+                <ReactECharts option={buildChartOption(chart)} style={{ height: chartHeight }} />
               </Card>
             </Col>
           ))}
@@ -157,4 +172,3 @@ export default function AnalysisPage() {
     </div>
   );
 }
-

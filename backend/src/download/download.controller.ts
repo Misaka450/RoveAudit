@@ -27,6 +27,13 @@ export class DownloadController {
     await this.downloadService.downloadCsv(reportCode, queryParams, req.user.userId, req.user.username, res);
   }
 
+  @Get('stats')
+  @Permission('report:view')
+  @ApiOperation({ summary: '下载统计' })
+  async getStats() {
+    return this.downloadService.getStats();
+  }
+
   @Get('logs')
   @Permission('report:view')
   @ApiOperation({ summary: '查询下载日志' })

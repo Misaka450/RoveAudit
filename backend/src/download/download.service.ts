@@ -118,6 +118,27 @@ export class DownloadService {
     return this.downloadLogRepository.delete(id);
   }
 
+  /** 下载统计：今日/本月下载次数 */
+  async getStats(): Promise<{ todayCount: number; monthCount: number; totalDownloads: number }> {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const monthStart = new Date(todayStart.getFullYear(), todayStart.getMonth(), 1);
+
+    const todayCount = await this.downloadLogRepository
+      .createQueryBuilder('log')
+      .where('log.download_time >= :today', { today: todayStart })
+      .getCount();
+
+    const monthCount = await this.downloadLogRepository
+      .createQueryBuilder('log')
+      .where('log.download_time >= :month', { month: monthStart })
+      .getCount();
+
+    const totalDownloads = await this.downloadLogRepository.count();
+
+    return { todayCount, monthCount, totalDownloads };
+  }
+
   private async saveLog(userId: number, username: string, report: Report, fileName: string, fileType: string, dataCount: number) {
     await this.downloadLogRepository.save({ userId, username, reportId: report.id, reportName: report.reportName, fileName, fileType, dataCount });
   }
