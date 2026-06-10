@@ -6,6 +6,7 @@ import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ImportUserRowDto } from './dto/batch-import.dto';
 
 /**
@@ -86,8 +87,8 @@ export class UserController {
 
   @Put(':id/reset-password')
   @ApiOperation({ summary: '重置密码' })
-  resetPassword(@Param('id') id: number, @Body('password') password: string) {
-    return this.userService.resetPassword(id, password);
+  resetPassword(@Param('id') id: number, @Body() dto: ResetPasswordDto) {
+    return this.userService.resetPassword(id, dto.password);
   }
 
   @Delete(':id')

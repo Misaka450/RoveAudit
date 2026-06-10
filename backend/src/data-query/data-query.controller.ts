@@ -1,11 +1,17 @@
 import { Controller, Get, Param, Query, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
 import { DataQueryService } from './data-query.service';
 
 /**
  * 数据查询控制器 - 对外提供清单数据查询接口
+ * 修复：使用 @SkipThrottle 跳过全局 60 次/分钟限流
+ * 原因：清单查询是核心高频操作（如表格翻页、筛选项联动），
+ *      60 次/分钟太低容易误伤正常用户。数据查询本身已要求登录
+ *      + 参数校验 + 报表配置校验，没必要再叠加严格限流。
  */
 @ApiTags('数据查询')
+@SkipThrottle() // 该控制器所有接口不限流（受登录和参数校验保护）
 @Controller('data-query')
 export class DataQueryController {
   constructor(private readonly dataQueryService: DataQueryService) {}

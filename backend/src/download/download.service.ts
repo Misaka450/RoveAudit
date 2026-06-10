@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between } from 'typeorm';
+import { Repository, Between, Like } from 'typeorm';
 import * as ExcelJS from 'exceljs';
 import { DataQueryService } from '../data-query/data-query.service';
 import { ReportService } from '../report/report.service';
@@ -107,9 +107,20 @@ export class DownloadService {
 
   /** 查询所有下载日志（兼容旧接口） */
   async findAll(keyword?: string, page?: number, pageSize?: number) {
-    if (keyword) {
-      // 保留 keyword 搜索能力，但简化实现
-      return this.findLogs(page, pageSize);
+    // 修复：按 username、fileName、reportName 模糊搜索
+    if (keyword && keyword.trim()) {
+      const trimmed = keyword.trim();
+      const [list, total] = await this.downloadLogRepository.findAndCount({
+        where: [
+          { username: Like(`%${trimmed}%`) },
+          { fileName: Like(`%${trimmed}%`) },
+          { reportName: Like(`%${trimmed}%`) },
+        ],
+        order: { downloadTime: 'DESC' },
+        skip: ((page ?? 1) - 1) * (pageSize ?? 20),
+        take: pageSize ?? 20,
+      });
+      return { list, total, page, pageSize };
     }
     return this.findLogs(page, pageSize);
   }

@@ -15,12 +15,26 @@ export class MenuService {
 
   /**
    * 查询菜单树（按 parentId 组装树形结构）
+   * 安全修复：未传 userId 时返回空（不再泄露全量菜单）
    */
-  async findTree() {
-    const menus = await this.menuRepository.find({
-      where: { status: 1 },
-      order: { sortOrder: 'ASC' },
-    });
+  async findTree(userId?: number) {
+    // 未登录用户：返回空（修复权限泄露 bug）
+    if (!userId) return [];
+
+    // 登录用户：只返回自己有权限的菜单
+    // 通过 sys_user_role → sys_role_menu → sys_menu 关联过滤
+    const menus = await this.menuRepository
+      .createQueryBuilder('m')
+      .innerJoin('sys_role_menu', 'rm', 'rm.menu_id = m.id')
+      .innerJoin('sys_user_role', 'ur', 'ur.role_id = rm.role_id')
+      .innerJoin('sys_role', 'r', 'r.id = ur.role_id')
+      .where('ur.user_id = :userId', { userId })
+      .andWhere('m.status = 1')
+      .andWhere('r.status = 1')
+      .orderBy('m.sort_order', 'ASC')
+      .select(['m.id', 'm.menuName', 'm.parentId', 'm.path', 'm.icon', 'm.sortOrder', 'm.status'])
+      .getMany();
+
     return this.buildTree(menus, 0);
   }
 

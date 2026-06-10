@@ -99,9 +99,23 @@ export class AuditMiddleware implements NestMiddleware {
     next();
   }
 
+  /**
+   * 根据请求路径识别模块
+   * 修复：原来用 path.includes(key) 会误匹配子串（如 /api/auth/login 会被 /users 误中）
+   *      改为按路径"段"匹配：第一段前缀或紧随 /api 之后
+   *      /api/users/123  → 匹配 /users → "用户管理"
+   *      /api/auth/login → 不匹配 /users  → 匹配 /auth → "认证管理"
+   */
   private getModule(path: string): string {
-    const matchedKey = MODULE_KEYS.find((key) => path.includes(key));
-    return matchedKey ? MODULE_MAP[matchedKey] : '其他';
+    // 去掉 /api 前缀，统一处理（如果用了 setGlobalPrefix('api')）
+    const normalized = path.replace(/^\/api/, '');
+    for (const key of MODULE_KEYS) {
+      // 检查路径段是否以 key 开头（避免 /users 误匹配 /users-extra 这种）
+      if (normalized === key || normalized.startsWith(key + '/')) {
+        return MODULE_MAP[key];
+      }
+    }
+    return '其他';
   }
 
   private sanitizeParams(req: Request): string {

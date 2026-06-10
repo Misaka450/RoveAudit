@@ -1,7 +1,6 @@
-import { Controller, Get, Post, Put, Delete, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { MenuService } from './menu.service';
-import { Public } from '../common/decorators/public.decorator';
 import { CreateMenuDto } from './dto/create-menu.dto';
 
 /**
@@ -13,10 +12,11 @@ export class MenuController {
   constructor(private readonly menuService: MenuService) {}
 
   @Get('tree')
-  @Public() // 前端获取菜单树不需要额外权限（JWT已包含菜单信息）
-  @ApiOperation({ summary: '获取菜单树（根据登录用户权限返回）' })
-  findTree() {
-    return this.menuService.findTree();
+  @ApiOperation({ summary: '获取当前登录用户的菜单树' })
+  // 修复：去掉 @Public()，改为必须登录，按用户权限返回菜单
+  findTree(@Req() req: any) {
+    const userId = req.user?.userId;
+    return this.menuService.findTree(userId);
   }
 
   @Get()

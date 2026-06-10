@@ -123,59 +123,91 @@ export class UserService {
   }
 
   /**
-   * 批量导入用户
-   /** 批量导入用户（限制最多 500 行） */
-   async batchImport(data: ImportUserRowDto[]) {
-     const MAX_BATCH_IMPORT_ROWS = 500;
-     if (data.length > MAX_BATCH_IMPORT_ROWS) {
-       return {
-         success: 0,
-         failed: data.length,
-         errors: [`单次导入不能超过 ${MAX_BATCH_IMPORT_ROWS} 条，当前 ${data.length} 条`],
-       };
-     }
-     const results: { success: number; failed: number; errors: string[] } = { success: 0, failed: 0, errors: [] };
-     for (const row of data) {
-       try {
-         if (!row.username || !row.realName || !row.password) {
-           results.failed++;
-           results.errors.push(`${row.username || '(空账号)'}: 缺少必填字段（账号、姓名、密码）`);
-           continue;
-         }
-         const exist = await this.userRepository.findOne({ where: { username: row.username } });
-         if (exist) {
-           results.failed++;
-           results.errors.push(`${row.username}: 账号已存在`);
-           continue;
-         }
-         const hashedPassword = await bcrypt.hash(String(row.password), 10);
-         const user = this.userRepository.create({
-           username: row.username,
-           realName: row.realName,
-           department: row.department || '',
-           phone: row.phone || '',
-           password: hashedPassword,
-           status: 1,
-         });
-         // 按角色名匹配
-         if (row.roleNames) {
-           const roleNames = String(row.roleNames).split(/[,，、\s]+/).filter(Boolean);
-           if (roleNames.length) {
-             const matchedRoles = await this.roleRepository.find({
-               where: roleNames.map((name: string) => ({ roleName: name })),
-             });
-             if (matchedRoles.length) user.roles = matchedRoles;
-           }
-         }
-         await this.userRepository.save(user);
-         results.success++;
-       } catch (e: any) {
-         results.failed++;
-         results.errors.push(`${row.username || '(未知)'}: ${e.message}`);
-       }
-     }
-     return results;
-   }
+   * 批量导入用户（限制最多 500 行）
+   * 性能优化：把循环中的多次数据库查询合并：
+   *   1. 一次性查全表已存在的 username（避免 N 次 SELECT）
+   *   2. 一次性查全表角色名（避免 N 次 SELECT）
+   * 配合并发批量创建，导入 500 条从分钟级降到秒级
+   */
+  async batchImport(data: ImportUserRowDto[]) {
+    const MAX_BATCH_IMPORT_ROWS = 500;
+    if (data.length > MAX_BATCH_IMPORT_ROWS) {
+      return {
+        success: 0,
+        failed: data.length,
+        errors: [`单次导入不能超过 ${MAX_BATCH_IMPORT_ROWS} 条，当前 ${data.length} 条`],
+      };
+    }
+    const results: { success: number; failed: number; errors: string[] } = { success: 0, failed: 0, errors: [] };
+
+    // 1. 前置过滤：必填字段检查
+    const validRows: ImportUserRowDto[] = [];
+    for (const row of data) {
+      if (!row.username || !row.realName || !row.password) {
+        results.failed++;
+        results.errors.push(`${row.username || '(空账号)'}: 缺少必填字段（账号、姓名、密码）`);
+      } else {
+        validRows.push(row);
+      }
+    }
+    if (!validRows.length) return results;
+
+    // 2. 一次性查出所有待插入账号是否已存在（一次 IN 查询）
+    const usernames = validRows.map((r) => r.username);
+    const existing = await this.userRepository.find({
+      where: usernames.map((u) => ({ username: u })),
+      select: ['username'],
+    });
+    const existingSet = new Set(existing.map((u) => u.username));
+    const newRows = validRows.filter((r) => {
+      if (existingSet.has(r.username)) {
+        results.failed++;
+        results.errors.push(`${r.username}: 账号已存在`);
+        return false;
+      }
+      return true;
+    });
+
+    // 3. 一次性查全表所有角色（按角色名匹配用户）
+    const allRoles = await this.roleRepository.find();
+    const roleMap = new Map(allRoles.map((r) => [r.roleName, r]));
+
+    // 4. 并发执行：每条独立，互相无依赖，限制并发 10 防连接池打满
+    const CONCURRENCY = 10;
+    for (let i = 0; i < newRows.length; i += CONCURRENCY) {
+      const batch = newRows.slice(i, i + CONCURRENCY);
+      await Promise.allSettled(
+        batch.map(async (row) => {
+          try {
+            const hashedPassword = await bcrypt.hash(String(row.password), 10);
+            const user = this.userRepository.create({
+              username: row.username,
+              realName: row.realName,
+              department: row.department || '',
+              phone: row.phone || '',
+              password: hashedPassword,
+              status: 1,
+            });
+            // 按角色名匹配（从预加载的角色表中查）
+            if (row.roleNames) {
+              const roleNames = String(row.roleNames).split(/[,，、\s]+/).filter(Boolean);
+              const matchedRoles = roleNames
+                .map((name) => roleMap.get(name))
+                .filter(Boolean) as typeof allRoles;
+              if (matchedRoles.length) user.roles = matchedRoles;
+            }
+            await this.userRepository.save(user);
+            results.success++;
+          } catch (e: any) {
+            results.failed++;
+            results.errors.push(`${row.username || '(未知)'}: ${e.message}`);
+          }
+        }),
+      );
+    }
+
+    return results;
+  }
 
    /** 删除用户（软删除，改为禁用状态） */
   async remove(id: number) {

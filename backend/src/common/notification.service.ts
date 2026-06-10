@@ -15,9 +15,29 @@ export class NotificationService {
     this.webhookUrl = this.configService.get('NOTIFICATION_WEBHOOK_URL', '');
     this.enabled = !!this.webhookUrl;
     if (this.enabled) {
-      this.logger.log('异常通知已启用，Webhook: ' + this.webhookUrl);
+      // 修复：日志中不要打印完整 webhook URL（可能含签名 token）
+      // 改为只打印协议 + 主机部分，token/query 替换为 ***
+      this.logger.log(`异常通知已启用，Webhook: ${this.maskUrl(this.webhookUrl)}`);
     } else {
       this.logger.log('异常通知未配置（设置 NOTIFICATION_WEBHOOK_URL 环境变量以启用）');
+    }
+  }
+
+  /**
+   * 脱敏 URL：保留协议 + 域名，path 后追加省略号，避免 token 泄漏到日志
+   * https://oapi.dingtalk.com/robot/send?access_token=abc123
+   * → https://oapi.dingtalk.com/robot/send?access_token=***
+   */
+  private maskUrl(url: string): string {
+    try {
+      const u = new URL(url);
+      // 替换所有 query 参数值为 ***
+      const params = Array.from(u.searchParams.entries()).map(([k]) => [k, '***'] as [string, string]);
+      u.search = '';
+      params.forEach(([k, v]) => u.searchParams.set(k, v));
+      return u.toString();
+    } catch {
+      return '***';
     }
   }
 

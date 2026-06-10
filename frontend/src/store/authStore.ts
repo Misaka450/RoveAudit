@@ -16,12 +16,43 @@ interface AuthState {
   isLoggedIn: () => boolean;
 }
 
+/**
+ * 安全读取 localStorage 中的 userInfo
+ * 修复：localStorage 中可能存了被手动篡改的脏数据（如非 JSON 字符串、缺字段等）
+ *      任何 JSON.parse 异常或字段缺失都会导致整个白屏（最常见：开发期间清缓存后格式变更）
+ *      现在统一 try-catch，失败时清掉脏数据返回 null
+ */
+function safeReadUserInfo(): UserInfo | null {
+  try {
+    const raw = localStorage.getItem('userInfo');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    // 验证必要字段：userId 与 username 必须存在
+    if (!parsed || typeof parsed !== 'object' || !parsed.userId || !parsed.username) {
+      localStorage.removeItem('userInfo');
+      return null;
+    }
+    return parsed as UserInfo;
+  } catch {
+    // JSON.parse 失败 → 清掉脏数据
+    localStorage.removeItem('userInfo');
+    return null;
+  }
+}
+
 export const useAuthStore = create<AuthState>((set, get) => ({
-  userInfo: JSON.parse(localStorage.getItem('userInfo') || 'null'),
+  // 修复：原来 JSON.parse(localStorage.getItem('userInfo') || 'null')
+  // 遇到脏数据会抛错导致整个白屏
+  userInfo: safeReadUserInfo(),
 
   setAuth: (userInfo: UserInfo) => {
     // Token 由后端通过 HttpOnly Cookie 管理，前端不需要存储 Token
-    localStorage.setItem('userInfo', JSON.stringify(userInfo));
+    try {
+      localStorage.setItem('userInfo', JSON.stringify(userInfo));
+    } catch (e) {
+      // 隐私模式 / 配额超限
+      console.warn('localStorage 写入失败:', e);
+    }
     set({ userInfo });
   },
 

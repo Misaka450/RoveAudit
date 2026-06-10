@@ -23,6 +23,14 @@ export default function UserPage() {
   // 批量导入弹窗
   const [importVisible, setImportVisible] = useState(false);
 
+  // 重置密码弹窗
+  // 修复：原代码用 Modal.confirm + 闭包变量 newPwd 收集密码
+  //      会因 React 渲染导致闭包捕获旧值，异步 onOk 拿到的 newPwd 可能是空
+  //      改用受控状态 + 独立 Modal
+  const [resetModal, setResetModal] = useState<{ open: boolean; user: User | null; password: string }>({
+    open: false, user: null, password: '',
+  });
+
   const loadUsers = async () => {
     setLoading(true);
     try {
@@ -60,30 +68,27 @@ export default function UserPage() {
   };
   const handleDelete = async (id: number) => { await userApi.remove(id); message.success('已禁用'); loadUsers(); };
 
-  /** 重置密码（弹窗输入新密码，不再硬编码默认密码） */
+  /** 重置密码（独立受控弹窗，避免闭包问题） */
   const handleResetPassword = (user: User) => {
-    let newPwd = '';
-    Modal.confirm({
-      title: '重置密码',
-      content: (
-        <div>
-          <p>为用户 "{user.realName}" 设置新密码：</p>
-          <Input.Password
-            placeholder="请输入新密码"
-            onChange={(e) => { newPwd = e.target.value; }}
-            style={{ marginTop: 8 }}
-          />
-        </div>
-      ),
-      onOk: async () => {
-        if (!newPwd || newPwd.length < 6) {
-          message.error('密码不能为空且至少6位');
-          return Promise.reject();
-        }
-        await userApi.resetPassword(user.id, newPwd);
-        message.success('密码已重置');
-      },
-    });
+    setResetModal({ open: true, user, password: '' });
+  };
+  const handleResetSubmit = async () => {
+    if (!resetModal.user) return;
+    // 同步后端密码规则：至少 8 位 + 大小写字母 + 数字
+    if (!resetModal.password || resetModal.password.length < 8
+        || !/[a-z]/.test(resetModal.password)
+        || !/[A-Z]/.test(resetModal.password)
+        || !/\d/.test(resetModal.password)) {
+      message.error('密码至少 8 位，需包含大小写字母和数字');
+      return;
+    }
+    try {
+      await userApi.resetPassword(resetModal.user.id, resetModal.password);
+      message.success('密码已重置');
+      setResetModal({ open: false, user: null, password: '' });
+    } catch (e) {
+      // 错误已由 request 拦截器统一提示
+    }
   };
 
   // 用户列表列
@@ -143,6 +148,23 @@ export default function UserPage() {
         onClose={() => setImportVisible(false)}
         onSuccess={loadUsers}
       />
+
+      {/* 重置密码弹窗（受控状态，避免闭包陷阱） */}
+      <Modal
+        title={`重置密码 - ${resetModal.user?.realName || ''}`}
+        open={resetModal.open}
+        onOk={handleResetSubmit}
+        onCancel={() => setResetModal({ open: false, user: null, password: '' })}
+        okText="确认重置"
+        cancelText="取消"
+      >
+        <p>请输入新密码：</p>
+        <Input.Password
+          value={resetModal.password}
+          onChange={(e) => setResetModal((s) => ({ ...s, password: e.target.value }))}
+          placeholder="至少 8 位，含大小写字母和数字"
+        />
+      </Modal>
     </Card>
   );
 }

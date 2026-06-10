@@ -11,6 +11,7 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { DorisService } from './data-query/doris.service';
 import { CacheService } from './common/cache.service';
+import { TokenBlacklistService } from './common/token-blacklist.service';
 import { DataSource } from 'typeorm';
 
 const logger = new Logger('Bootstrap');
@@ -54,9 +55,10 @@ async function bootstrap() {
   const reflector = app.get(Reflector);
   const jwtService = app.get(JwtService);
   const cacheService = app.get(CacheService);
+  const tokenBlacklistService = app.get(TokenBlacklistService);
   const dataSource = app.get(DataSource);
   app.useGlobalGuards(
-    new JwtAuthGuard(jwtService, reflector),
+    new JwtAuthGuard(jwtService, reflector, tokenBlacklistService),
     new PermissionGuard(reflector, cacheService, dataSource),
   );
 

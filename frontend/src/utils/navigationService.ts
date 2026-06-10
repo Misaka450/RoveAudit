@@ -11,6 +11,22 @@ export function setNavigate(fn: NavigateFn) {
   navigateFn = fn;
 }
 
+/** 标记：是否正在登出/跳转到登录页（防止 401 并发时多次触发跳转和登出请求） */
+let redirectingToLogin = false;
+
+/**
+ * 跳转到登录页
+ * 修复：增加重入保护。如果多个 401 响应并发到达，只触发一次导航和一次 /auth/logout
+ * 避免：① 多个 navigate('/login') 重复执行 ② 多次调用 logout 接口
+ */
+export function navigateToLogin() {
+  if (redirectingToLogin) return;
+  redirectingToLogin = true;
+  // 1 秒后允许再次跳转（页面 reload 后变量自然重置）
+  setTimeout(() => { redirectingToLogin = false; }, 1000);
+  navigate('/login');
+}
+
 /** 执行导航跳转 - 优先使用 React Router，否则回退为整页跳转 */
 export function navigate(path: string) {
   if (navigateFn) {

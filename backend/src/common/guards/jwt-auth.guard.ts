@@ -8,16 +8,19 @@ import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
+import { TokenBlacklistService } from '../token-blacklist.service';
 
 /**
  * JWT 认证守卫 - 验证用户是否已登录
  * 自动跳过标记了 @Public() 的接口
+ * 同时检查 Token 黑名单（已登出的 Token 立即失效）
  */
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
   constructor(
     private jwtService: JwtService,
     private reflector: Reflector,
+    private tokenBlacklistService: TokenBlacklistService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -40,6 +43,12 @@ export class JwtAuthGuard implements CanActivate {
       request['user'] = await this.jwtService.verifyAsync(token);
     } catch {
       throw new UnauthorizedException('登录已过期，请重新登录');
+    }
+
+    // 检查 Token 是否已被加入黑名单（登出后会失效）
+    // 关键修复：之前 JwtStrategy 有这个逻辑但未被使用，导致登出后 Token 仍可用
+    if (this.tokenBlacklistService.isBlacklisted(token)) {
+      throw new UnauthorizedException('Token 已失效，请重新登录');
     }
 
     return true;

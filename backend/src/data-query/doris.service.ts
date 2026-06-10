@@ -22,13 +22,18 @@ export class DorisService {
       database: this.configService.get('DORIS_DATABASE', 'audit_db'),
       waitForConnections: true,
       connectionLimit: this.configService.get('DORIS_POOL_SIZE', 10),
-      queueLimit: 0,
+      // 修复：设置排队上限为 100，防止池耗尽时无限等待拖垮应用
+      queueLimit: 100,
       // 空闲连接超时自动释放，防止连接泄漏
       idleTimeout: 60000,
       // 连接超时
       connectTimeout: 10000,
+      // 启用 multipleStatements: false（默认就是 false），防止 SQL 注入
+      multipleStatements: false,
     });
-    this.logger.log('Doris 连接池已创建');
+    this.logger.log(
+      `Doris 连接池已创建 [max=${this.configService.get('DORIS_POOL_SIZE', 10)}, queueLimit=100]`,
+    );
   }
 
   /**
@@ -69,12 +74,13 @@ export class DorisService {
 
   /**
    * 执行计数查询（获取总条数）
-   * 优化：用 COUNT(*) OVER() 窗口函数替代子查询，一次查询拿到数据和总数
+   * 通过子查询包裹原 SQL 一次执行得到总条数（用于分页场景）
+   * 性能权衡：避免两次查询的连接开销，但子查询会执行一次原 SQL
    */
   async count(sql: string, params?: any[]): Promise<number> {
-    // 从原始 SQL 中构建 COUNT 查询
+    // 子查询包裹原 SQL，确保 ORDER BY 等语句也能正常处理
     const countSql = `SELECT COUNT(*) as total FROM (${sql}) as t`;
     const result = await this.query(countSql, params);
-    return result[0]?.total || 0;
+    return Number(result[0]?.total) || 0;
   }
 }

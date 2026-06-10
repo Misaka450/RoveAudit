@@ -67,7 +67,9 @@ export class DataQueryService {
           if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(column)) {
             continue;
           }
-          sql += ` AND ${column} LIKE ?`;
+          // 修复：原 SQL 无 WHERE 子句时不能用 AND 开头，需先判断
+          const hasWhere = /\bWHERE\b/i.test(sql);
+          sql += ` ${hasWhere ? 'AND' : 'WHERE'} ${column} LIKE ?`;
           queryParams.push(`%${value}%`);
         }
       }

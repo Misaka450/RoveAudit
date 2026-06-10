@@ -1,10 +1,17 @@
 import { Controller, Get, Query, Param, Res, Req, UnauthorizedException, Delete } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
 import { Response } from 'express';
 import { DownloadService } from './download.service';
 import { Permission } from '../common/decorators/permission.decorator';
 
+/**
+ * 下载控制器
+ * 修复：使用 @SkipThrottle 跳过全局限流，下载是用户主动操作
+ *      不会因为爬虫等异常被频繁请求（且已要求登录+权限）
+ */
 @ApiTags('下载')
+@SkipThrottle()
 @Controller('download')
 export class DownloadController {
   constructor(private readonly downloadService: DownloadService) {}
